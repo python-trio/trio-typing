@@ -1,0 +1,67 @@
+[case testSmoke]
+import trio
+import trio.testing
+from typing import List, Sequence
+
+async def sleep_sort(values: Sequence[float]) -> List[float]:
+    result: List[float] = []
+
+    async def worker(value: float) -> None:
+        await trio.sleep(value)
+        result.append(value)
+
+    async with trio.open_nursery() as nursery:
+        reveal_type(nursery)  # E: Revealed type is 'trio_typing.Nursery*'
+        reveal_type(nursery.cancel_scope)  # E: Revealed type is 'trio_typing.CancelScope'
+        for value in values:
+            nursery.start_soon(worker, value)
+            nursery.start_soon(worker)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[None]]"
+            nursery.start_soon(worker, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[None]]"
+            nursery.start_soon(worker, value, value)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[float, float], Awaitable[None]]"
+
+    return result
+
+trio.run(sleep_sort, (1, 3, 5, 2, 4), clock=trio.testing.MockClock(autojump_threshold=0))
+trio.run(sleep_sort, ["hi", "there"])  # E: Argument 1 to "run" has incompatible type "Callable[[Sequence[float]], Coroutine[Any, Any, List[float]]]"; expected "Callable[[List[str]], Awaitable[List[float]]]"
+[out]
+
+[case testAsyncCM]
+import trio
+from typing import AsyncIterator
+from trio_typing import Nursery
+from async_generator import asynccontextmanager
+
+@asynccontextmanager
+async def open_nursery_cancel_in(seconds: float) -> AsyncIterator[Nursery]:
+    async with trio.open_nursery() as nursery:
+        nursery.cancel_scope.deadline = trio.current_time() + seconds
+        yield nursery
+
+async def test() -> None:
+    async with open_nursery_cancel_in(3) as nursery:
+        reveal_type(nursery)  # E: Revealed type is 'trio_typing.Nursery*'
+    async with open_nursery_cancel_in(None):  # E: Argument 1 to "open_nursery_cancel_in" has incompatible type "None"; expected "float"
+        pass
+[out]
+
+[case testTaskStatus]
+import trio
+from trio_typing import TaskStatus
+
+async def child(arg: int, *, task_status: TaskStatus[int]) -> None:
+    await trio.sleep(arg)
+    task_status.started("hi")  # E: Argument 1 to "started" of "TaskStatus" has incompatible type "str"; expected "int"
+    task_status.started()  # E: TaskStatus.started() requires an argument for types other than TaskStatus[None]
+
+async def child2(arg: int, *, task_status: TaskStatus[None]) -> None:
+    await trio.sleep(arg)
+    task_status.started()
+
+async def parent() -> None:
+    async with trio.open_nursery() as nursery:
+        result = await nursery.start(child, 10)
+        result2 = await nursery.start(child2, 10)
+        reveal_type(result)  # E: Revealed type is 'builtins.int*'
+        reveal_type(result2)  # E: Revealed type is 'None'
+
+[out]

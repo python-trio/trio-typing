@@ -1,11 +1,8 @@
 import trio
 from abc import ABCMeta, abstractmethod
-from typing import (
-    List, Tuple, Union, Any, Optional, Generic, TypeVar,
-    AsyncIterator
-)
+from typing import List, Tuple, Union, Any, Optional, Generic, TypeVar, AsyncIterator
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 class Clock(metaclass=ABCMeta):
     @abstractmethod
@@ -35,12 +32,11 @@ class HostnameResolver(metaclass=ABCMeta):
         family: int = ...,
         type: int = ...,
         proto: int = ...,
-        flags: int = ...
+        flags: int = ...,
     ) -> List[Tuple[int, int, int, str, Tuple[Any, ...]]]: ...
-
     @abstractmethod
     async def getnameinfo(
-        self, sockaddr: tuple, flags: int
+        self, sockaddr: Tuple[Any, ...], flags: int
     ) -> Tuple[str, int]: ...
 
 class SocketFactory(metaclass=ABCMeta):
@@ -54,16 +50,13 @@ class SocketFactory(metaclass=ABCMeta):
 
 class AsyncResource(metaclass=ABCMeta):
     @abstractmethod
-    async def aclose(self): ...
+    async def aclose(self) -> None: ...
     async def __aenter__(self: T) -> T: ...
-    async def __aexit__(self, *exc) -> bool: ...
+    async def __aexit__(self, *exc: object) -> bool: ...
 
 class SendStream(AsyncResource):
     @abstractmethod
-    async def send_all(
-        self, data: Union[bytes, bytearray, memoryview]
-    ) -> None: ...
-
+    async def send_all(self, data: Union[bytes, bytearray, memoryview]) -> None: ...
     @abstractmethod
     async def wait_send_all_might_not_block(self) -> None: ...
 
@@ -71,21 +64,23 @@ class ReceiveStream(AsyncResource):
     @abstractmethod
     async def receive_some(self, max_bytes: int) -> Union[bytes, bytearray]: ...
 
-class Stream(SendStream, ReceiveStream, metaclass=ABCMeta): pass
+class Stream(SendStream, ReceiveStream, metaclass=ABCMeta):
+    pass
 
 class HalfCloseableStream(Stream):
     @abstractmethod
     async def send_eof(self) -> None: ...
 
-_SomeResource = TypeVar('_SomeResource', bound=AsyncResource)
+_SomeResource = TypeVar("_SomeResource", bound=AsyncResource)
+
 class Listener(AsyncResource, Generic[_SomeResource]):
     @abstractmethod
     async def accept(self) -> _SomeResource: ...
 
-_T1 = TypeVar('_T1')
+_T1 = TypeVar("_T1")
 
-T_co = TypeVar('T_co', covariant=True)
-T_contra = TypeVar('T_contra', contravariant=True)
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
 
 class SendChannel(AsyncResource, Generic[T_contra]):
     @abstractmethod
@@ -102,7 +97,5 @@ class ReceiveChannel(AsyncResource, Generic[T_co]):
     async def receive(self) -> T_co: ...
     @abstractmethod
     def clone(self: _T1) -> _T1: ...
-
     def __aiter__(self) -> AsyncIterator[T_co]: ...
     async def __anext__(self) -> T_co: ...
-

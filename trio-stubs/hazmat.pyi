@@ -1,16 +1,29 @@
 from typing import (
-    Any, AsyncContextManager, AsyncIterator, Awaitable, Callable,
-    ContextManager, Coroutine, Generic, NoReturn, Optional, Sequence, Union,
-    Sequence, TypeVar, Tuple
+    Any,
+    AsyncContextManager,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    ContextManager,
+    Coroutine,
+    Generic,
+    NoReturn,
+    Optional,
+    Sequence,
+    Union,
+    Sequence,
+    TypeVar,
+    Tuple,
 )
+from trio_typing import Nursery, ArgsForCallable, takes_callable_and_args
 import trio
 import outcome
 import contextvars
 import enum
 import select
 
-T = TypeVar('T')
-F = TypeVar('F', bound=Callable[..., Any])
+T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
 
 class _Statistics:
     def __getattr__(self, name: str) -> Any: ...
@@ -23,7 +36,10 @@ def currently_ki_protected() -> bool: ...
 # _core._entry_queue
 class TrioToken:
     def run_sync_soon(
-        self, sync_fn: Callable[..., Any], *args: Any, idempotent: bool = False
+        self,
+        sync_fn: Callable[[ArgsForCallable], None],
+        *args: ArgsForCallable,
+        idempotent: bool = False
     ) -> None: ...
 
 # _core._unbounded_queue
@@ -39,12 +55,12 @@ class UnboundedQueue(Generic[T]):
 
 # _core._run
 class Task:
-    coro: Coroutine[Any, outcome.Outcome, Any]
+    coro: Coroutine[Any, outcome.Outcome[object], Any]
     name: str
     context: contextvars.Context
     custom_sleep_data: Any
-    parent_nursery: Optional[trio.Nursery]
-    child_nurseries: Sequence[trio.Nursery]
+    parent_nursery: Optional[Nursery]
+    child_nurseries: Sequence[Nursery]
 
 async def checkpoint() -> None: ...
 async def checkpoint_if_cancelled() -> None: ...
@@ -53,15 +69,14 @@ def current_root_task() -> Task: ...
 def current_statistics() -> _Statistics: ...
 def current_clock() -> trio.abc.Clock: ...
 def current_trio_token() -> TrioToken: ...
-def reschedule(task: Task, next_send: outcome.Outcome = ...) -> None: ...
+def reschedule(task: Task, next_send: outcome.Outcome[Any] = ...) -> None: ...
 def spawn_system_task(
-    async_fn: Callable[..., Awaitable[Any]],
-    *args: Any,
-    name: Optional[str] = None
+    async_fn: Callable[[ArgsForCallable], Awaitable[None]],
+    *args: ArgsForCallable,
+    name: object = ...,
 ) -> Task: ...
 def add_instrument(instrument: trio.abc.Instrument) -> None: ...
 def remove_instrument(instrument: trio.abc.Instrument) -> None: ...
-
 async def wait_socket_readable(sock: trio.socket.SocketType) -> None: ...
 async def wait_socket_writable(sock: trio.socket.SocketType) -> None: ...
 def notify_socket_close(sock: trio.socket.SocketType) -> None: ...
@@ -75,18 +90,16 @@ def notify_fd_close(fd: int) -> None: ...
 def current_kqueue() -> select.kqueue: ...
 def monitor_kevent(
     ident: int, filter: int
-) -> ContextManager[UnboundedQueue]: ...
+) -> ContextManager[UnboundedQueue[select.kevent]]: ...
 async def wait_kevent(
-    ident: int,
-    filter: int,
-    abort_func: Callable[[Callable[[], NoReturn]], Abort],
+    ident: int, filter: int, abort_func: Callable[[Callable[[], NoReturn]], Abort]
 ) -> select.kevent: ...
 
 # windows only
 def current_iocp() -> int: ...
 def register_with_iocp(handle: int) -> None: ...
 async def wait_overlapped(handle: int, lpOverlapped: int) -> None: ...
-def monitor_completion_key() -> ContextManager[Tuple[int, UnboundedQueue]]: ...
+def monitor_completion_key() -> ContextManager[Tuple[int, UnboundedQueue[Any]]]: ...
 
 # _core._traps
 class Abort(enum.Enum):
@@ -98,14 +111,12 @@ async def wait_task_rescheduled(
     abort_func: Callable[[Callable[[], NoReturn]], Abort]
 ) -> Any: ...
 async def permanently_detach_coroutine_object(
-    final_outcome: outcome.Outcome
+    final_outcome: outcome.Outcome[object]
 ) -> Any: ...
 async def temporarily_detach_coroutine_object(
     abort_func: Callable[[Callable[[], NoReturn]], Abort]
 ) -> Any: ...
-async def reattach_detached_coroutine_object(
-    task: Task, yield_value: Any
-) -> None: ...
+async def reattach_detached_coroutine_object(task: Task, yield_value: Any) -> None: ...
 
 # _core._parking_lot
 class ParkingLot:
@@ -119,7 +130,9 @@ class ParkingLot:
     def statistics(self) -> _Statistics: ...
 
 # _core._local
-class _RunVarToken: pass
+class _RunVarToken:
+    pass
+
 class RunVar(Generic[T]):
     def __init__(self, name: str, default: T = ...) -> None: ...
     def get(self, default: T = ...) -> T: ...
@@ -128,4 +141,3 @@ class RunVar(Generic[T]):
 
 # _wait_for_object
 async def WaitForSingleObject(obj: int) -> None: ...
-
