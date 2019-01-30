@@ -13,11 +13,16 @@ class TrioPlugin(Plugin):
         self, fullname: str
     ) -> Optional[Callable[[FunctionContext], Type]]:
         if fullname in (
-            "contextlib.asynccontextmanager", "async_generator.asynccontextmanager"
+            "contextlib.asynccontextmanager", "async_generator.asynccontextmanager",
+            "async_generator.async_generator", "trio_typing.async_generator"
         ):
-            return asynccontextmanager_callback
+            return args_invariant_decorator_callback
         if fullname == "trio_typing.takes_callable_and_args":
             return takes_callable_and_args_callback
+        if fullname in ("__call__ of _AgenMaker1", "__call__ of _AgenMaker2"):
+            return args_invariant_decorator_callback
+        if fullname == "async_generator.yield_":
+            return async_generator_callback
         return None
 
     def get_method_hook(
@@ -28,8 +33,11 @@ class TrioPlugin(Plugin):
         return None
 
 
-def asynccontextmanager_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for 'asynccontextmanager'."""
+def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
+    """Infer a better return type for 'asynccontextmanager', 'async_generator',
+    and other decorators that modify their argument callable's return type
+    but not its argument types.
+    """
     # (adapted from the contextmanager support in mypy's builtin plugin)
     if ctx.arg_types and len(ctx.arg_types[0]) == 1:
         arg_type = ctx.arg_types[0][0]
@@ -47,6 +55,23 @@ def asynccontextmanager_callback(ctx: FunctionContext) -> Type:
                 is_ellipsis_args=arg_type.is_ellipsis_args,
             )
     return ctx.default_return_type
+
+
+def async_generator_callback(ctx: FunctionContext) -> Type:
+    """Handle @async_generato(yield_type=X) and so on.
+
+    @async_generator(yield_type=X) def fn: ... winds up calling
+    _AgenMaker1[X]().__call__(fn). If a send_type Y is also
+    specified, it's _AgenMaker2[X, Y]().__call__(fn).
+    This hook intercepts _AgenMaker1.__call__ and
+    _AgenMaker2.__call__, fixes up the return type's arguments
+    in the same manner as args_invariant_decorator_callback,
+    and also tries to provide a typechecking context for
+    'await yield_' and 'await yield_from_' calls inside
+    the async generator.
+    """
+    import pdb; pdb.set_trace()
+    return args_invariant_decorator_callback(ctx)
 
 
 def started_callback(ctx: MethodContext) -> Type:
@@ -78,7 +103,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         def start_soon(
             self,
             async_fn: Callable[[trio_typing.ArgsForCallable], None],
-            *args: ArgsForCallable,
+            *args: trio_typing.ArgsForCallable,
         ) -> None: ...
 
     instead of::
@@ -88,11 +113,28 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         T3 = TypeVar("T3")
         T4 = TypeVar("T4")
 
+        @overload
         def start_soon(
             self,
-            async_fn: Callable[[trio_typing.ArgsForCallable], None],
-            *args: ArgsForCallable,
+            async_fn: Callable[[], None],
         ) -> None: ...
+
+        @overload
+        def start_soon(
+            self,
+            async_fn: Callable[[T1], None],
+            __arg1: T1,
+        ) -> None: ...
+
+        @overload
+        def start_soon(
+            self,
+            async_fn: Callable[[T1, T2], None],
+            __arg1: T1,
+            __arg2: T2
+        ) -> None: ...
+
+        # etc
 
     """
     try:

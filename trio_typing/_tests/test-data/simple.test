@@ -65,3 +65,35 @@ async def parent() -> None:
         reveal_type(result2)  # E: Revealed type is 'None'
 
 [out]
+
+[case testAsyncGenerator]
+from typing import Tuple
+from trio_typing import async_generator, YieldType, SendType
+from async_generator import yield_, yield_from_
+
+@async_generator(YieldType[Tuple[int, int]], SendType[float])
+async def test_agen(x: int, y: str) -> str:
+    v1 = await yield_()
+    reveal_type(v1)  # E: ...
+    v2 = await yield_(3)
+    reveal_type(v2)  # E: ...
+    v3 = await yield_((4, 5))
+    reveal_type(v3)  # E: ...
+    if x > 0:
+        return await yield_from_(test_agen(x - 1, y + "yo"))
+    else:
+        return y
+
+async def test() -> None:
+    reveal_type(test_agen())  # E: ...
+    reveal_type(test_agen("one", 2))  # E: ...
+    agen = test_agen(1, "two")
+    reveal_type(agen)
+    v1 = await agen.__anext__()
+    reveal_type(v1)  # E: ...
+    v2 = await agen.asend(3.2)
+    reveal_type(v2)  # E: ...
+    v3 = await agen.asend(None)
+    reveal_type(v3)  # E: ...
+
+[out]

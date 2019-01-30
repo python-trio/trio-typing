@@ -1,26 +1,41 @@
+import sys
 from typing import (
     Any,
     AsyncContextManager,
-    AsyncGenerator,
     AsyncIterator,
     Awaitable,
     Callable,
+    Generic,
     NamedTuple,
     Optional,
     TypeVar,
+    overload,
 )
+from trio_typing import AsyncGenerator, AsyncGeneratorWithReturn
 from typing_extensions import Protocol
 
+_T = TypeVar("_T")
+
 # PLUGIN: ugh
+@overload
 def async_generator(
-    fn: Callable[..., Awaitable[None]]
-) -> Callable[..., AsyncIterator[Any]]: ...
+    __fn: Callable[..., Awaitable[None]]
+) -> Callable[..., AsyncGenerator[Any, Any]]: ...
+@overload
+def async_generator(
+    __fn: Callable[..., Awaitable[_T]]
+) -> Callable[..., AsyncGeneratorWithReturn[Any, Any, _T]]: ...
+
+@overload
+def yield_() -> Any: ...
+@overload
 def yield_(obj: object) -> Any: ...
-def yield_from_(agen: AsyncIterator[Any]) -> Any: ...
+@overload
+def yield_from_(agen: AsyncGeneatorWithReturn[Any, Any, _T]) -> _T: ...
+@overload
+def yield_from_(agen: AsyncIterator[Any]) -> None: ...
 def isasyncgen(obj: object) -> bool: ...
 def isasyncgenfunction(obj: object) -> bool: ...
-
-_T = TypeVar("_T")
 
 def asynccontextmanager(
     fn: Callable[..., AsyncIterator[_T]]
