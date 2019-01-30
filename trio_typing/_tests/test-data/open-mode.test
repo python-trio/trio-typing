@@ -1,0 +1,22 @@
+[case testOpenType]
+import trio
+async def test() -> None:
+    reveal_type(await trio.open_file("foo"))  # E: Revealed type is 'trio._AsyncTextIOBase*'
+    reveal_type(await trio.open_file("foo", "rb"))  # E: Revealed type is 'trio._AsyncBufferedIOBase*'
+    reveal_type(await trio.open_file("foo", "rb", int(trio.current_time())))  # E: Revealed type is 'Union[trio._AsyncRawIOBase, trio._AsyncBufferedIOBase]'
+    reveal_type(await trio.open_file("foo", buffering=0, mode="w+b"))  # E: Revealed type is 'trio._AsyncRawIOBase*'
+    reveal_type(await trio.open_file("foo", "w"))  # E: Revealed type is 'trio._AsyncTextIOBase*'
+    reveal_type(await trio.open_file("foo", input()))  # E: Revealed type is 'trio._AsyncIOBase*'
+
+    reveal_type(trio.wrap_file(open("foo")))  # E: Revealed type is 'trio._AsyncTextIOBase'
+    reveal_type(trio.wrap_file(open("foo", "rb")))  # E: Revealed type is 'trio._AsyncBufferedIOBase'
+    reveal_type(trio.wrap_file(open("foo", "w")))  # E: Revealed type is 'trio._AsyncTextIOBase'
+    reveal_type(trio.wrap_file(open("foo", input())))  # E: Revealed type is 'trio._AsyncIOBase'
+
+    path = trio.Path.cwd() / "hello"
+    reveal_type(await path.open())  # E: Revealed type is 'trio._AsyncTextIOBase*'
+    reveal_type(await path.open("rb"))  # E: Revealed type is 'trio._AsyncBufferedIOBase*'
+    reveal_type(await path.open("rb", int(trio.current_time())))  # E: Revealed type is 'Union[trio._AsyncRawIOBase, trio._AsyncBufferedIOBase]'
+    reveal_type(await path.open(buffering=0, mode="w+b"))  # E: Revealed type is 'trio._AsyncRawIOBase*'
+    reveal_type(await path.open("w"))  # E: Revealed type is 'trio._AsyncTextIOBase*'
+    reveal_type(await path.open(input()))  # E: Revealed type is 'trio._AsyncIOBase*'

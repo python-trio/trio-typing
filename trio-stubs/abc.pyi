@@ -27,7 +27,7 @@ class HostnameResolver(metaclass=ABCMeta):
     @abstractmethod
     async def getaddrinfo(
         self,
-        host: Union[bytearray, bytes, str],
+        host: Union[bytes, str],
         port: Union[str, int, None],
         family: int = ...,
         type: int = ...,
@@ -56,13 +56,13 @@ class AsyncResource(metaclass=ABCMeta):
 
 class SendStream(AsyncResource):
     @abstractmethod
-    async def send_all(self, data: Union[bytes, bytearray, memoryview]) -> None: ...
+    async def send_all(self, data: Union[bytes, memoryview]) -> None: ...
     @abstractmethod
     async def wait_send_all_might_not_block(self) -> None: ...
 
 class ReceiveStream(AsyncResource):
     @abstractmethod
-    async def receive_some(self, max_bytes: int) -> Union[bytes, bytearray]: ...
+    async def receive_some(self, max_bytes: int) -> bytes: ...
 
 class Stream(SendStream, ReceiveStream, metaclass=ABCMeta):
     pass

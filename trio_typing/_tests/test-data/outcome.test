@@ -1,0 +1,35 @@
+[case testOutcome]
+import itertools
+import outcome
+from typing import Generator, Iterator, Union, Any
+from async_generator import async_generator, yield_
+from trio_typing import SendType, YieldType
+
+def some_fn(__arg1: int, __arg2: bytes) -> str:
+    return __arg1 * __arg2.decode("utf-8")
+
+async def some_async_fn(a1: int, a2: bytes) -> str:
+    return some_fn(a1, a2)
+
+def calc_lengths() -> Generator[int, str, Any]:
+    next_yield = 0
+    while True:
+        next_yield = len((yield next_yield))
+
+def wrong_type_gen() -> Iterator[int]:
+    yield from itertools.count()
+
+@async_generator
+async def calc_lengths_async() -> Union[SendType[str], YieldType[int]]:
+    next_yield = 0
+    while True:
+        next_yield = len(await yield_(next_yield))
+
+async def test() -> None:
+    reveal_type(await outcome.acapture(some_async_fn, 3, b"test"))  # E: Revealed type is 'Union[outcome.Value[builtins.str*], outcome.Error]'
+    test_outcome = outcome.capture(some_fn, 10, b"hi")
+    reveal_type(test_outcome)  # E: Revealed type is 'Union[outcome.Value[builtins.str*], outcome.Error]'
+    reveal_type(test_outcome.unwrap())  # E: Revealed type is 'builtins.str*'
+    test_outcome.send(wrong_type_gen())  # E: Argument 1 to "send" of "Value" has incompatible type "Iterator[int]"; expected "Generator[<nothing>, str, Any]"  # E: Argument 1 to "send" of "Error" has incompatible type "Iterator[int]"; expected "Generator[<nothing>, Any, Any]"
+    reveal_type(test_outcome.send(calc_lengths()))  # E: Revealed type is 'builtins.int*'
+    reveal_type(await test_outcome.asend(calc_lengths_async()))  # E: Revealed type is 'builtins.int*'

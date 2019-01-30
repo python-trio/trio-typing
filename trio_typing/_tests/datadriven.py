@@ -1,3 +1,5 @@
+# Adapts mypy.test.data pytest plugin for use outside the mypy tree
+
 import os
 import sys
 import types
@@ -15,4 +17,4 @@ class ConfigModule(types.ModuleType):
 
 sys.modules["mypy.test.config"] = ConfigModule()
 
-pytest_plugins = ["mypy.test.data"]
+from mypy.test.data import *

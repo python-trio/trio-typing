@@ -19,11 +19,12 @@ setup(
     author="Joshua Oreman",
     author_email="oremanj@gmail.com",
     license="MIT -or- Apache License 2.0",
-    packages=stub_packages + ["trio_typing"],
-    package_data={
-        package: ["*.pyi"]
-        for package in stub_packages
-    },
+    packages=[
+        "async_generator-stubs",
+        "outcome-stubs",
+        "trio-stubs",
+        "trio_typing",
+    ],
     include_package_data=True,
     install_requires=[
         "trio",
@@ -34,15 +35,19 @@ setup(
     keywords=[
         "async", "trio", "mypy"
     ],
-    python_requires=">=3.6",
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "License :: OSI Approved :: Apache Software License",
         "Framework :: Trio",
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS :: MacOS X",
+        "Operating System :: POSIX :: BSD",
+        "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: Implementation :: CPython",
+        "Programming Language :: Python :: Implementation :: PyPy",
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
     ],

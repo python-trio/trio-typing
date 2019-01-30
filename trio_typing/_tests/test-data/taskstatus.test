@@ -1,0 +1,28 @@
+[case testTaskStatus]
+import trio
+from trio_typing import TaskStatus
+
+async def child(arg: int, *, task_status: TaskStatus[int]) -> None:
+    await trio.sleep(arg)
+    task_status.started("hi")  # E: Argument 1 to "started" of "TaskStatus" has incompatible type "str"; expected "int"
+    task_status.started()  # E: TaskStatus.started() requires an argument for types other than TaskStatus[None]
+
+async def child2(
+    arg: int, *, task_status: TaskStatus[None] = trio.TASK_STATUS_IGNORED
+) -> None:
+    await trio.sleep(arg)
+    task_status.started()
+    await child(arg, task_status=task_status)  # E: Argument "task_status" to "child" has incompatible type "TaskStatus[None]"; expected "TaskStatus[int]"
+
+async def parent() -> None:
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(child, 10)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[int], Awaitable[None]]"
+        nursery.start_soon(child2)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[None]]"
+        nursery.start_soon(child2, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[None]]"
+        nursery.start_soon(child2, 50)
+        await nursery.start(child)  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[NamedArg(TaskStatus[<nothing>], 'task_status')], Awaitable[None]]"
+        await nursery.start(child, "hi")  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str, NamedArg(TaskStatus[int], 'task_status')], Awaitable[None]]"
+        result = await nursery.start(child, 10)
+        result2 = await nursery.start(child2, 10)
+        reveal_type(result)  # E: Revealed type is 'builtins.int*'
+        reveal_type(result2)  # E: Revealed type is 'None'

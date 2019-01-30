@@ -1,0 +1,75 @@
+[case testTrioBasic]
+import trio
+import trio.testing
+from typing import List, Sequence
+
+async def sleep_sort(values: Sequence[float]) -> List[float]:
+    result: List[float] = []
+
+    async def worker(value: float) -> None:
+        await trio.sleep(value)
+        result.append(value)
+
+    async with trio.open_nursery() as nursery:
+        reveal_type(nursery)  # E: Revealed type is 'trio_typing.Nursery*'
+        reveal_type(nursery.cancel_scope)  # E: Revealed type is 'trio.CancelScope'
+        for value in values:
+            nursery.start_soon(worker, value)
+            nursery.start_soon(worker)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[None]]"
+            nursery.start_soon(worker, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[None]]"
+            nursery.start_soon(worker, value, value)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[float, float], Awaitable[None]]"
+
+    return result
+
+trio.run(sleep_sort, (1, 3, 5, 2, 4), clock=trio.testing.MockClock(autojump_threshold=0))
+trio.run(sleep_sort, ["hi", "there"])  # E: Argument 1 to "run" has incompatible type "Callable[[Sequence[float]], Coroutine[Any, Any, List[float]]]"; expected "Callable[[List[str]], Awaitable[List[float]]]"
+
+reveal_type(trio.Event().statistics().anything)  # E: Revealed type is 'Any'
+
+[case testExceptions]
+import trio
+
+raise trio.Cancelled()  # E: Cannot instantiate abstract class 'Cancelled' with abstract attribute '_objects_of_this_type_are_not_directly_constructible'
+
+try:
+    trio.run(trio.sleep, 3)
+except trio.Cancelled:
+    raise
+
+def filter_exc(exc: BaseException):
+    if isinstance(exc, trio.BrokenResourceError):
+        return None
+    return exc
+
+with trio.MultiError.catch(filter_exc):
+    pass
+
+try:
+    trio.run(trio.sleep, 3)
+except trio.MultiError as ex:
+    reveal_type(ex.exceptions[0])  # E: Revealed type is 'builtins.BaseException*'
+
+[case testOverloaded]
+from typing import overload, Any
+
+@overload
+async def fn(arg: int) -> str: ...
+@overload
+async def fn(arg: float) -> bytes: ...
+async def fn(arg: Any) -> Any:
+    return arg
+
+import trio
+reveal_type(trio.run(fn, 3))  # E: Revealed type is 'builtins.str*'
+reveal_type(trio.run(fn, 3.4))  # E: Revealed type is 'builtins.bytes*'
+trio.run(fn)  # E: Argument 1 to "run" has incompatible type overloaded function; expected "Callable[[], Awaitable[str]]"
+
+[case testChannels]
+from typing import Tuple
+import trio
+send, receive = trio.open_memory_channel[Tuple[int, str]](5)
+reveal_type(send)  # E: Revealed type is 'trio._MemorySendChannel[Tuple[builtins.int, builtins.str]]'
+reveal_type(receive)  # E: Revealed type is 'trio._MemoryReceiveChannel[Tuple[builtins.int, builtins.str]]'
+async def test() -> None:
+    await send.send((5, "hi"))
+    reveal_type(receive.receive_nowait()[1])  # E: Revealed type is 'builtins.str'

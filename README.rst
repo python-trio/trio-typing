@@ -13,7 +13,7 @@ This repository provides:
     (``async_generator-stubs``)
 
 * A package ``trio_typing`` containing types that Trio programs often want
-  to refer to (``Nursery``, ``CancelScope``, ``TaskStatus[T]``) and a mypy
+  to refer to (``Nursery``, ``AsyncGenerator[Y, S]``, ``TaskStatus[T]``) and a mypy
   plugin that smooths over some limitations in the basic type hints.
 
 Quickstart
@@ -23,44 +23,156 @@ Install with::
 
     pip install -U trio-typing
 
-Optionally enable the plugin in your ``mypy.ini``::
+Enable the plugin in your ``mypy.ini`` (optional, but recommended)::
 
     [mypy]
     plugins = trio_typing.plugin
 
-Example
-~~~~~~~
+What's in the box?
+~~~~~~~~~~~~~~~~~~
 
-::
+The stubs packages provide types for all public non-deprecated APIs of
+``trio``, ``outcome``, and ``async_generator``, as of the release date
+of the corresponding ``trio-typing`` distribution. You don't need to
+explicitly configure these; just say ``import trio`` (for example)
+and mypy will know to look in ``trio-stubs`` for the type information.
 
-    from async_generator import asynccontextmanager
-    from typing import AsyncIterator
-    from trio_typing import CancelScope, Nursery, TaskStatus
+The ``trio_typing`` package provides:
 
-    @asynccontextmanager
-    async def open_daemon_nursery() -> AsyncIterator[Tuple[Nursery, Nursery]]:
-        async with trio.open_nursery() as daemonic_part:
-            async with trio.open_nursery() as regular_part:
-                yield (regular_part, daemonic_part)
-            daemonic_part.cancel_scope.cancel()
+* Names for two important types that Trio keeps anonymous: ``Nursery``
+  and ``TaskStatus[T]`` (where ``T`` is the type of the value
+  the task provides to be returned from ``nursery.start()``). These are
+  implemented as ABCs, and the actual private types inside Trio
+  (like ``trio._core._run.Nursery``) are registered as virtual subclasses
+  of them. So, you can't instantiate the ``trio_typing`` types, but
+  ``isinstance(nursery, trio_typing.Nursery)`` where ``nursery`` is a Trio
+  nursery object does return True.
 
-    async def sleep_at_most(
-        seconds: float, *, task_status: TaskStatus[CancelScope] = trio.TASK_STATUS_IGNORED
-    ) -> None:
-        with trio.move_on_after(seconds) as cancel_scope:
-            task_status.started(cancel_scope)
-            await trio.sleep_forever()
+* A backport of ``typing.AsyncGenerator[YieldT, SendT]`` to Python 3.5.
+  (``YieldT`` is the type of values yielded by the generator, and
+  ``SendT`` is the type of values it accepts as an argument to ``asend()``.)
+  This is an abstract class describing the async generator interface:
+  ``AsyncIterator`` plus ``asend``, ``athrow``, ``aclose``, and the
+  ``ag_*`` introspection attributes. On 3.6+, ``trio_typing.AsyncGenerator``
+  is just a reexport of ``typing.AsyncGenerator``.
 
-    async def example() -> None:
-        async with trio.open_nursery() as nursery:
-            cancel_scope = await nursery.start_soon(sleep_at_most, 5)
-            await trio.sleep(1)
-            cancel_scope.cancel()
+* ``CompatAsyncGenerator[YieldT, SendT, ReturnT]``,
+  a name for the otherwise-anonymous concrete async generator type
+  returned by ``@async_generator`` functions. It is a subtype of
+  ``AsyncGenerator[YieldT, SendT]`` and provides the same methods.
+  (Native async generators don't have a ``ReturnT``; it is only relevant
+  in determining the return type of ``await async_generator.yield_from_()``.)
+
+* A few types that are only useful with the mypy plugin: ``YieldType[T]``,
+  ``SendType[T]``, ``ArgsForCallable``, and the decorator
+  ``@takes_callable_and_args``.
+
+The ``trio_typing.plugin`` mypy plugin provides:
+
+* Argument type checking for functions decorated with
+  ``@asynccontextmanager`` (either the one in ``async_generator`` or the
+  one in 3.7+ ``contextlib``) and ``@async_generator``
+
+* Inference of more specific ``trio.open_file()`` and ``trio.Path.open()``
+  return types based on constant ``mode`` and ``buffering`` arguments, so
+  ``await trio.open_file("foo", "rb", 0)`` returns an unbuffered async
+  file object in binary mode and ``await trio.open_file("bar")`` returns
+  an async file object in text mode
+
+* Signature checking for ``task_status.started()``, so it raises an error if
+  the ``task_status`` object is not of type ``TaskStatus[None]``
+
+* Boilerplate reduction for functions that take parameters ``(fn, *args)``
+  and ultimately invoke ``fn(*args)``: just write
+
+  ::
+
+      @trio_typing.takes_callable_and_args
+      def start_soon(
+          async_fn: Callable[[trio_typing.ArgsForCallable], Awaitable[T]],
+          *args: ArgsForCallable,
+          other_keywords: str = are_ok_too,
+      ):
+          # your implementation here
+
+  ``start_soon(async_fn, *args)`` will raise an error if ``async_fn(*args)``
+  would do so. You can also make the callable take some non-splatted
+  arguments; the ``*args`` get inserted at whatever position in the
+  argument list you write ``ArgsForCallable``.
+
+  Note: due to mypy limitations, we only support a maximum of 5
+  positional arguments, and keyword arguments can't be passed in this way;
+  ``nursery.start_soon(functools.partial(...))`` will pass the type checker
+  but won't be able to actually check the argument types.
+
+* Mostly-full support for type checking ``@async_generator`` functions.
+  You write the decorated function as if it returned a union of its actual
+  return type, its yield type wrapped in ``YieldType[]``, and its send
+  type wrapped in ``SendType[]``::
+
+      from trio_typing import YieldType, SendType
+      @async_generator
+      async def sleep_and_sqrt() -> Union[None, SendType[int], YieldType[float]]:
+          next_yield = 0.0
+          while True:
+              amount = await yield_(next_yield)  # amount is an int
+              if amount < 0:
+                  return None
+              await trio.sleep(amount)
+              next_yield = math.sqrt(amount)
+
+      # prints: CompatAsyncGenerator[float, int, None]
+      reveal_type(sleep_and_sqrt())
+
+  Calls to ``yield_`` and ``yield_from_`` inside an ``@async_generator``
+  function are type-checked based on these declarations. If you leave
+  off *either* the yield type or send type, the missing one is assumed
+  to be ``None``; if you leave off *both* (writing just
+  ``async def sleep_and_sqrt() -> None:``, like you would if you weren't
+  using the plugin), they're both assumed to be ``Any``.
+
+  Note the explicit ``return None``; mypy won't accept ``return`` or
+  falling off the end of the function, unless you run it with
+  ``--no-warn-no-return``.
 
 Limitations
 ~~~~~~~~~~~
 
-[TODO]
+* Calls to variadic Trio functions like ``trio.run()``,
+  ``nursery.start_soon()``, and so on, only can type-check up to five
+  positional arguments. (This number could be increased easily, but
+  only at the cost of slower typechecking for everyone; mypy's current
+  architecture requires that we generate overload sets initially for
+  every arity we want to be able to use.) You can work around this with
+  a ``# type: ignore`` comment.
+
+* While ``trio.abc.SendChannel`` and ``trio.abc.ReceiveChannel`` are declared as
+  generic in the stubs, actual trio doesn't declare them as such, so workarounds
+  are required if you want to indicate the types of objects in your channels::
+
+      # Works
+      send, receive = cast(
+          Tuple["trio.abc.SendChannel[int]", "trio.abc.ReceiveChannel[int]"],
+          trio.open_memory_channel(10)
+      )
+
+      # Works on Python 3.6+
+      send: "trio.abc.SendChannel[int]"
+      receive: "trio.abc.ReceiveChannel[int]"
+      send, receive = trio.open_memory_channel(10)
+
+      # Doesn't work
+      send, receive = trio.open_memory_channel[bytes](10)
+
+      # Works
+      if TYPE_CHECKING:
+          BytesChannel = trio.abc.ReceiveChannel[bytes]
+      else:
+          BytesChannel = trio.abc.ReceiveChannel
+      class MyChannel(BytesChannel): ...
+
+      # Typechecks but doesn't work
+      class MyChannel(trio.abc.ReceiveChannel[bytes]): ...
 
 License
 ~~~~~~~

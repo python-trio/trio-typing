@@ -1,0 +1,108 @@
+[case testAsyncGenerator]
+from typing import Tuple, Union, Generic, TypeVar, AsyncIterator, cast
+from async_generator import async_generator, yield_, yield_from_
+from trio_typing import YieldType, SendType, AsyncGenerator
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class arange(Generic[T]):
+    def __aiter__(self) -> "arange[T]":
+        return self
+    async def __anext__(self) -> T:
+        return cast(T, 0)
+
+@async_generator
+async def test_agen(x: int, y: str) -> Union[
+    str, YieldType[Tuple[int, int]], SendType[float]
+]:
+    v1 = await yield_()  # E: Incompatible types (yield_ argument "None", declared YieldType "Tuple[int, int]")
+    reveal_type(v1)  # E: Revealed type is 'builtins.float*'
+    v2 = await yield_(3)  # E: Incompatible types (yield_ argument "int", declared YieldType "Tuple[int, int]")
+    reveal_type(v2)  # E: Revealed type is 'builtins.float*'
+    v3 = await yield_((4, 5))
+    reveal_type(v3)  # E: Revealed type is 'builtins.float*'
+    await yield_from_(arange[float]())  # E: Incompatible types (yield_from_ argument type "arange[float]", expected iterable type "AsyncIterable[Tuple[int, int]]")
+    await yield_from_(arange[Tuple[int, int]]())
+    await yield_from_(arange[Tuple[bool, int]]())
+    await yield_from_(arange[Tuple[int, float]]())  # E: Incompatible types (yield_from_ argument type "arange[Tuple[int, float]]", expected iterable type "AsyncIterable[Tuple[int, int]]")
+    if x > 0:
+        yf_res = await yield_from_(test_agen(x - 1, y + "yo"))
+        reveal_type(yf_res)  # E: Revealed type is 'builtins.str*'
+        return yf_res
+    else:
+        return y
+
+def expects_base_agen(arg: AsyncGenerator[T, U]) -> Tuple[T, U]:
+    raise ValueError
+
+async def test() -> None:
+    ag_bad = test_agen()  # E: Too few arguments for "test_agen"
+    reveal_type(ag_bad)  # E: Revealed type is 'trio_typing.CompatAsyncGenerator[Tuple[builtins.int, builtins.int], builtins.float, builtins.str]'
+    test_agen("one", "two")  # E: Argument 1 to "test_agen" has incompatible type "str"; expected "int"
+    agen = test_agen(1, "two")
+    reveal_type(agen)  # E: Revealed type is 'trio_typing.CompatAsyncGenerator[Tuple[builtins.int, builtins.int], builtins.float, builtins.str]'
+    v1 = await agen.__anext__()
+    reveal_type(v1)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+    v2 = await agen.asend(3.2)
+    reveal_type(v2)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+    v3 = await agen.asend(None)  # E: Argument 1 to "asend" of "CompatAsyncGenerator" has incompatible type "None"; expected "float"
+    reveal_type(v3)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+    reveal_type(expects_base_agen(agen))  # E: Revealed type is 'Tuple[Tuple[builtins.int, builtins.int], builtins.float*]'
+
+[case testAsyncGeneratorUtils]
+import async_generator as agen
+import trio
+
+@agen.async_generator
+async def dummy():
+    pass
+
+firstiter = agen.get_asyncgen_hooks().firstiter
+if firstiter is not None:
+    firstiter(iter([]))  # E: Argument 1 has incompatible type "Iterator[<nothing>]"; expected "AsyncGenerator[Any, Any]"
+    reveal_type(firstiter(dummy()))  # E: Revealed type is 'None'
+    agen.set_asyncgen_hooks(firstiter)
+    agen.set_asyncgen_hooks(firstiter, finalizer=firstiter)
+
+async def test_aclosing(thing: trio.abc.AsyncResource) -> None:
+    async with agen.aclosing(thing) as result:
+        reveal_type(result)  # E: Revealed type is 'trio.abc.AsyncResource*'
+
+[case testAsyncCM]
+import trio
+from typing import Union
+from trio_typing import Nursery, YieldType
+from async_generator import asynccontextmanager, async_generator, yield_
+
+@asynccontextmanager
+@async_generator
+async def open_nursery_cancel_in(seconds: float) -> Union[None, YieldType[Nursery]]:
+    async with trio.open_nursery() as nursery:
+        nursery.cancel_scope.deadline = trio.current_time() + seconds
+        await yield_(nursery)
+    return None
+
+async def test() -> None:
+    async with open_nursery_cancel_in(3) as nursery:
+        reveal_type(nursery)  # E: Revealed type is 'trio_typing.Nursery*'
+    async with open_nursery_cancel_in(None):  # E: Argument 1 to "open_nursery_cancel_in" has incompatible type "None"; expected "float"
+        pass
+
+[case testAsyncCM_36]
+import trio
+from typing import AsyncIterator
+from trio_typing import Nursery
+from async_generator import asynccontextmanager
+
+@asynccontextmanager
+async def open_nursery_cancel_in(seconds: float) -> AsyncIterator[Nursery]:
+    async with trio.open_nursery() as nursery:
+        nursery.cancel_scope.deadline = trio.current_time() + seconds
+        yield nursery
+
+async def test() -> None:
+    async with open_nursery_cancel_in(3) as nursery:
+        reveal_type(nursery)  # E: Revealed type is 'trio_typing.Nursery*'
+    async with open_nursery_cancel_in(None):  # E: Argument 1 to "open_nursery_cancel_in" has incompatible type "None"; expected "float"
+        pass
