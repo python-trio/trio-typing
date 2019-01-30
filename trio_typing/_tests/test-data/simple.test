@@ -67,33 +67,50 @@ async def parent() -> None:
 [out]
 
 [case testAsyncGenerator]
-from typing import Tuple
-from trio_typing import async_generator, YieldType, SendType
-from async_generator import yield_, yield_from_
+from typing import Tuple, Union, Generic, TypeVar, AsyncIterator, cast
+from async_generator import async_generator, yield_, yield_from_
+from trio_typing import YieldType, SendType
 
-@async_generator(YieldType[Tuple[int, int]], SendType[float])
-async def test_agen(x: int, y: str) -> str:
-    v1 = await yield_()
-    reveal_type(v1)  # E: ...
-    v2 = await yield_(3)
-    reveal_type(v2)  # E: ...
+T = TypeVar("T")
+
+class arange(Generic[T]):
+    def __aiter__(self) -> "arange[T]":
+        return self
+    async def __anext__(self) -> T:
+        return cast(T, 0)
+
+@async_generator
+async def test_agen(x: int, y: str) -> Union[
+    str, YieldType[Tuple[int, int]], SendType[float]
+]:
+    v1 = await yield_()  # E: Incompatible types (yield_ argument "None", declared YieldType "Tuple[int, int]")
+    reveal_type(v1)  # E: Revealed type is 'builtins.float*'
+    v2 = await yield_(3)  # E: Incompatible types (yield_ argument "int", declared YieldType "Tuple[int, int]")
+    reveal_type(v2)  # E: Revealed type is 'builtins.float*'
     v3 = await yield_((4, 5))
-    reveal_type(v3)  # E: ...
+    reveal_type(v3)  # E: Revealed type is 'builtins.float*'
+    await yield_from_(arange[float]())  # E: Incompatible types (yield_from_ argument type "arange[float]", expected iterable type "AsyncIterable[Tuple[int, int]]")
+    await yield_from_(arange[Tuple[int, int]]())
+    await yield_from_(arange[Tuple[bool, int]]())
+    await yield_from_(arange[Tuple[int, float]]())  # E: Incompatible types (yield_from_ argument type "arange[Tuple[int, float]]", expected iterable type "AsyncIterable[Tuple[int, int]]")
     if x > 0:
-        return await yield_from_(test_agen(x - 1, y + "yo"))
+        yf_res = await yield_from_(test_agen(x - 1, y + "yo"))
+        reveal_type(yf_res)  # E: Revealed type is 'builtins.str*'
+        return yf_res
     else:
         return y
 
 async def test() -> None:
-    reveal_type(test_agen())  # E: ...
-    reveal_type(test_agen("one", 2))  # E: ...
+    ag_bad = test_agen()  # E: Too few arguments for "test_agen"
+    reveal_type(ag_bad)  # E: Revealed type is 'trio_typing.AsyncGeneratorWithReturn[Tuple[builtins.int, builtins.int], builtins.float, builtins.str]'
+    test_agen("one", "two")  # E: Argument 1 to "test_agen" has incompatible type "str"; expected "int"
     agen = test_agen(1, "two")
-    reveal_type(agen)
+    reveal_type(agen)  # E: Revealed type is 'trio_typing.AsyncGeneratorWithReturn[Tuple[builtins.int, builtins.int], builtins.float, builtins.str]'
     v1 = await agen.__anext__()
-    reveal_type(v1)  # E: ...
+    reveal_type(v1)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
     v2 = await agen.asend(3.2)
-    reveal_type(v2)  # E: ...
-    v3 = await agen.asend(None)
-    reveal_type(v3)  # E: ...
+    reveal_type(v2)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+    v3 = await agen.asend(None)  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "None"; expected "float"
+    reveal_type(v3)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
 
 [out]

@@ -45,25 +45,8 @@ class AsyncGeneratorWithReturn(
 
 AsyncGeneratorWithReturn.register(_ag._impl.AsyncGenerator)
 
-# This supports decorating async generators with any of:
-#    @trio_typing.async_generator
-#    @trio_typing.async_generator(trio_typing.YieldType[X])
-#    @trio_typing.async_generator(trio_typing.YieldType[X], trio_typing.SendType[Y])
-# (we wanted to use square brackets but that's not valid decorator syntax)
-
-class _MarkerType:
+class YieldType(_t.Generic[_T_co]):
     pass
 
-class YieldType(_t.Generic[_T_co], _MarkerType):
+class SendType(_t.Generic[_T_contra]):
     pass
-
-class SendType(_t.Generic[_T_contra], _MarkerType):
-    pass
-
-def async_generator(*args):
-    if len(args) == 1 and not (
-        isinstance(args[0], type) and issubclass(agrs[0], _MarkerType)
-    ):
-        return _ag.async_generator(args[0])
-    else:
-        return _ag.async_generator
