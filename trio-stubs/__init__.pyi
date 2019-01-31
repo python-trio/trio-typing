@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from typing import (
     Any,
     AnyStr,
@@ -75,7 +76,7 @@ class EndOfChannel(Exception):
 class NoHandshakeError(Exception):
     pass
 
-class Cancelled(BaseException, _NotConstructible):
+class Cancelled(BaseException, _NotConstructible, metaclass=ABCMeta):
     pass
 
 # _core._multierror
@@ -419,6 +420,10 @@ class SSLStream(trio.abc.Stream):
     def get_channel_binding(self, cb_type: str = ...) -> Optional[bytes]: ...
     async def do_handshake(self) -> None: ...
     async def unwrap(self) -> Tuple[trio.abc.Stream, bytes]: ...
+    async def aclose(self) -> None: ...
+    async def send_all(self, data: Union[bytes, bytearray, memoryview]) -> None: ...
+    async def wait_send_all_might_not_block(self) -> None: ...
+    async def receive_some(self, max_bytes: int) -> Union[bytes, bytearray]: ...
 
 class SSLListener(trio.abc.Listener[SSLStream]):
     transport_listener: trio.abc.Listener[trio.abc.Stream]
@@ -430,6 +435,8 @@ class SSLListener(trio.abc.Listener[SSLStream]):
         https_compatible: bool = False,
         max_refill_bytes: int = ...,
     ) -> None: ...
+    async def accept(self) -> SSLStream: ...
+    async def aclose(self) -> None: ...
 
 # _subprocess
 

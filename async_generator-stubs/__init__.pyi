@@ -18,15 +18,16 @@ from typing_extensions import Protocol
 
 _T = TypeVar("_T")
 
-@overload
-def async_generator(
-    __fn: Callable[..., Awaitable[None]]
-) -> Callable[..., AsyncGenerator[Any, Any]]: ...
-@overload
+# The returned async generator's YieldType and SendType and the
+# argument types of the decorated function get inferred by
+# trio_typing.plugin
 def async_generator(
     __fn: Callable[..., Awaitable[_T]]
 ) -> Callable[..., AsyncGeneratorWithReturn[Any, Any, _T]]: ...
 
+# The return type and a more specific argument type can be
+# inferred by trio_typing.plugin, based on the enclosing
+# @async_generator's YieldType and SendType
 @overload
 async def yield_() -> Any: ...
 @overload
@@ -37,9 +38,12 @@ async def yield_from_(agen: AsyncGeneratorWithReturn[Any, Any, _T]) -> _T: ...
 async def yield_from_(agen: AsyncGenerator[Any, Any]) -> None: ...
 @overload
 async def yield_from_(agen: AsyncIterable[Any]) -> None: ...
+
 def isasyncgen(obj: object) -> bool: ...
 def isasyncgenfunction(obj: object) -> bool: ...
 
+# Argument types of the decorated function get inferred by
+# trio_typing.plugin
 def asynccontextmanager(
     fn: Callable[..., AsyncIterator[_T]]
 ) -> Callable[..., AsyncContextManager[_T]]: ...
@@ -57,7 +61,6 @@ class _AsyncGenHooks(NamedTuple):
 
 def get_asyncgen_hooks() -> _AsyncGenHooks: ...
 def set_asyncgen_hooks(
-    *,
     firstiter: Optional[Callable[[AsyncGenerator[Any, Any]], None]] = ...,
     finalizer: Optional[Callable[[AsyncGenerator[Any, Any]], None]] = ...,
 ) -> None: ...

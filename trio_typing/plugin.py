@@ -2,12 +2,13 @@ import sys
 from typing import Callable, List, Optional, Tuple, cast
 from typing import Type as typing_Type
 from mypy.plugin import Plugin, FunctionContext, MethodContext
-from mypy.nodes import ARG_POS, ARG_STAR, TypeInfo, Context
+from mypy.nodes import ARG_POS, ARG_STAR, TypeInfo, Context, FuncDef
 from mypy.types import (
     Type, CallableType, NoneTyp, Overloaded, TypeVarDef, TypeVarType, Instance,
     UnionType, UninhabitedType, AnyType,
 )
 from mypy.constraints import infer_constraints, SUPERTYPE_OF
+from mypy.checker import TypeChecker
 
 
 class TrioPlugin(Plugin):
@@ -60,10 +61,13 @@ def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
-def extract_yield_and_send_type(
-    ctx: FunctionContext, original_async_return_type: UnionType
+def decode_agen_types_from_return_type(
+    ctx: FunctionContext, original_async_return_type: Type
 ) -> Tuple[Optional[Type], Optional[Type], Type]:
-    arms = original_async_return_type.items
+    if isinstance(original_async_return_type, UnionType):
+        arms = original_async_return_type.items
+    else:
+        arms = [original_async_return_type]
     yield_type: Optional[Type] = None
     send_type: Optional[Type] = None
     other_arms: List[Type] = []
@@ -106,6 +110,7 @@ def extract_yield_and_send_type(
             other_arms, ctx.context.line, ctx.context.column
         )
 
+
 def async_generator_callback(ctx: FunctionContext) -> Type:
     """Handle @async_generator."""
     new_return_type = args_invariant_decorator_callback(ctx)
@@ -116,63 +121,69 @@ def async_generator_callback(ctx: FunctionContext) -> Type:
             'trio_typing.AsyncGeneratorWithReturn'
         )
         and len(new_return_type.ret_type.args) == 3
-        and isinstance(new_return_type.ret_type.args[0], AnyType)
-        and isinstance(new_return_type.ret_type.args[1], AnyType)
-        and isinstance(new_return_type.ret_type.args[2], UnionType)
     ):
-        yield_type, send_type, yf_return_type = extract_yield_and_send_type(
+        yield_type, send_type, yf_return_type = decode_agen_types_from_return_type(
             ctx, new_return_type.ret_type.args[2]
         )
-        if isinstance(yf_return_type, NoneTyp):
-            agen_node: TypeInfo = ctx.api.lookup_qualified(
-                "trio_typing.AsyncGenerator"
-            ).node
-            ret_type = Instance(
-                agen_node,
-                [yield_type, send_type],
-                new_return_type.ret_type.line,
-                new_return_type.ret_type.column,
-                new_return_type.ret_type.erased,
-                new_return_type.ret_type.final_value,
-            )
-        else:
-            ret_type = new_return_type.ret_type.copy_modified(
+        if yield_type is None or send_type is None:
+            return new_return_type
+        return new_return_type.copy_modified(
+            ret_type=new_return_type.ret_type.copy_modified(
                 args=[yield_type, send_type, yf_return_type]
             )
-        return new_return_type.copy_modified(ret_type=ret_type)
+        )
     return new_return_type
 
 
-def yield_callback(ctx: FunctionContext) -> Type:
-    """Provide a more specific argument and return type for yield_()."""
-    if len(ctx.arg_types) == 0:
-        arg_type = NoneTyp(ctx.context.line, ctx.context.column)
-    elif ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = ctx.arg_types[0][0]
-    else:
-        return ctx.default_return_type
+def decode_enclosing_agen_types(
+    ctx: FunctionContext
+) -> Tuple[Optional[Type], Optional[Type]]:
 
-    enclosing_func = ctx.api.scope.top_function()
-    if not enclosing_func.is_coroutine or not enclosing_func.is_decorated:
+    private_api = cast(TypeChecker, ctx.api)
+    enclosing_func = private_api.scope.top_function()
+    if (
+        enclosing_func is None
+        or not isinstance(enclosing_func, FuncDef)
+        or not enclosing_func.is_coroutine
+        or not enclosing_func.is_decorated
+    ):
         # we can't actually detect the @async_generator decorator but
-        # we'll try
-        ctx.api.fail("async_generator.yield_() outside an @async_generator func")
-        return ctx.default_return_type
+        # we'll at least notice if it couldn't possibly be present
+        ctx.api.fail(
+            "async_generator.yield_() outside an @async_generator func", ctx.context
+        )
+        return None, None
 
     if (
-        enclosing_func.type.ret_type.type.fullname() == "typing.Coroutine"
+        isinstance(enclosing_func.type, CallableType)
+        and isinstance(enclosing_func.type.ret_type, Instance)
+        and enclosing_func.type.ret_type.type.fullname() == "typing.Coroutine"
         and len(enclosing_func.type.ret_type.args) == 3
         and isinstance(enclosing_func.type.ret_type.args[0], AnyType)
         and isinstance(enclosing_func.type.ret_type.args[1], AnyType)
         and isinstance(enclosing_func.type.ret_type.args[2], UnionType)
     ):
-        yield_type, send_type, _ = extract_yield_and_send_type(
+        yield_type, send_type, _ = decode_agen_types_from_return_type(
             ctx, enclosing_func.type.ret_type.args[2]
         )
-        if yield_type is None and send_type is None:
-            return ctx.default_return_type
+        return yield_type, send_type
 
-        ctx.api.check_subtype(
+    return None, None
+
+
+def yield_callback(ctx: FunctionContext) -> Type:
+    """Provide a more specific argument and return type for yield_()."""
+    if len(ctx.arg_types) == 0:
+        arg_type = NoneTyp(ctx.context.line, ctx.context.column)  # type: Type
+    elif ctx.arg_types and len(ctx.arg_types[0]) == 1:
+        arg_type = ctx.arg_types[0][0]
+    else:
+        return ctx.default_return_type
+
+    private_api = cast(TypeChecker, ctx.api)
+    yield_type, send_type = decode_enclosing_agen_types(ctx)
+    if yield_type is not None and send_type is not None:
+        private_api.check_subtype(
             subtype=arg_type,
             supertype=yield_type,
             context=ctx.context,
@@ -191,60 +202,45 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
     else:
         return ctx.default_return_type
 
-    enclosing_func = ctx.api.scope.top_function()
-    if not enclosing_func.is_coroutine or not enclosing_func.is_decorated:
-        # we can't actually detect the @async_generator decorator but
-        # we'll try
-        ctx.api.fail(
-            "async_generator.yield_from_() outside an @async_generator func"
-        )
+    private_api = cast(TypeChecker, ctx.api)
+    our_yield_type, our_send_type = decode_enclosing_agen_types(ctx)
+    if our_yield_type is None or our_send_type is None:
         return ctx.default_return_type
 
     if (
-        enclosing_func.type.ret_type.type.fullname() == "typing.Coroutine"
-        and len(enclosing_func.type.ret_type.args) == 3
-        and isinstance(enclosing_func.type.ret_type.args[0], AnyType)
-        and isinstance(enclosing_func.type.ret_type.args[1], AnyType)
-        and isinstance(enclosing_func.type.ret_type.args[2], UnionType)
-    ):
-        our_yield_type, our_send_type, _ = extract_yield_and_send_type(
-            ctx, enclosing_func.type.ret_type.args[2]
+        isinstance(arg_type, Instance)
+        and arg_type.type.fullname() in (
+            "trio_typing.AsyncGeneratorWithReturn",
+            "trio_typing.AsyncGenerator",
+            "typing.AsyncGenerator",
         )
-
-        if (
-            isinstance(arg_type, Instance)
-            and arg_type.type.fullname() in (
-                "trio_typing.AsyncGeneratorWithReturn",
-                "trio_typing.AsyncGenerator",
-                "typing.AsyncGenerator",
-            )
-            and len(arg_type.args) >= 2
-        ):
-            their_yield_type, their_send_type = arg_type.args[:2]
-            ctx.api.check_subtype(
-                subtype=their_yield_type,
-                supertype=our_yield_type,
-                context=ctx.context,
-                subtype_label="yield_from_ argument YieldType",
-                supertype_label="local declared YieldType",
-            )
-            ctx.api.check_subtype(
-                subtype=our_send_type,
-                supertype=their_send_type,
-                context=ctx.context,
-                subtype_label="local declared SendType",
-                supertype_label="yield_from_ argument SendType",
-            )
-        elif isinstance(arg_type, Instance):
-            ctx.api.check_subtype(
-                subtype=arg_type,
-                supertype=ctx.api.named_generic_type(
-                    "typing.AsyncIterable", [our_yield_type]
-                ),
-                context=ctx.context,
-                subtype_label="yield_from_ argument type",
-                supertype_label="expected iterable type",
-            )
+        and len(arg_type.args) >= 2
+    ):
+        their_yield_type, their_send_type = arg_type.args[:2]
+        private_api.check_subtype(
+            subtype=their_yield_type,
+            supertype=our_yield_type,
+            context=ctx.context,
+            subtype_label="yield_from_ argument YieldType",
+            supertype_label="local declared YieldType",
+        )
+        private_api.check_subtype(
+            subtype=our_send_type,
+            supertype=their_send_type,
+            context=ctx.context,
+            subtype_label="local declared SendType",
+            supertype_label="yield_from_ argument SendType",
+        )
+    elif isinstance(arg_type, Instance):
+        private_api.check_subtype(
+            subtype=arg_type,
+            supertype=ctx.api.named_generic_type(
+                "typing.AsyncIterable", [our_yield_type]
+            ),
+            context=ctx.context,
+            subtype_label="yield_from_ argument type",
+            supertype_label="expected iterable type",
+        )
 
     return ctx.default_return_type
 

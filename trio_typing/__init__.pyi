@@ -1,5 +1,6 @@
+import sys
 import trio
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod, abstractproperty, ABCMeta
 from typing import (
     Any,
     AsyncIterator,
@@ -71,7 +72,7 @@ class Nursery:
 
 
 if sys.version_info >= (3, 6):
-    from typing import AsyncGenerator
+    from typing import AsyncGenerator as AsyncGenerator
 else:
     class AsyncGenerator(AsyncIterator[T_co], Generic[T_co, T_contra]):
         @abstractmethod
@@ -100,7 +101,9 @@ else:
         def ag_running(self) -> bool: ...
 
 class AsyncGeneratorWithReturn(
-    AsyncGenerator[T_co, T_contra], Generic[T_co, T_contra, T_co2]
+    AsyncGenerator[T_co, T_contra],
+    Generic[T_co, T_contra, T_co2],
+    metaclass=ABCMeta,
 ):
     pass
 
