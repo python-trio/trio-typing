@@ -114,3 +114,35 @@ async def test() -> None:
     reveal_type(v3)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
 
 [out]
+
+[case testPartial]
+import functools
+import mypy_extensions
+from typing import Tuple
+
+def fn(__arg1: int, arg2: str, arg3: bool = False, *args, arg4: str, arg5: int = 42):
+    pass
+
+pfn = functools.partial(fn, 2, "wat", arg3=True, arg5=10)
+reveal_type(pfn)
+reveal_type(pfn.args)
+reveal_type(pfn.keywords)
+reveal_type(pfn.func)
+pfn(False, object(), arg4="there")
+
+def test(args: Tuple[int, str], args2: Tuple[int, ...]):
+    pfn3 = functools.partial(fn, *args, *args2)
+    reveal_type(pfn3)
+    reveal_type(pfn3.args)
+    reveal_type(pfn3.keywords)
+    reveal_type(pfn3.func)
+
+elems = [1, 2, 3]
+kwds = {"a": 4, "b": 5}
+pfn2 = functools.partial(fn, 0, *elems, c=4, **kwds)
+reveal_type(pfn2)
+reveal_type(pfn2.args)
+reveal_type(pfn2.keywords)
+reveal_type(pfn2.func)
+
+[out]

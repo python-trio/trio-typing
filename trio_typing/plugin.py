@@ -1,40 +1,20 @@
 import sys
+import itertools
 from typing import Callable, List, Optional, Tuple, cast
 from typing import Type as typing_Type
-from mypy.plugin import Plugin, FunctionContext, MethodContext
-from mypy.nodes import ARG_POS, ARG_STAR, TypeInfo, Context, FuncDef
+from collections import OrderedDict
+from mypy.plugin import Plugin, FunctionContext, MethodContext, AttributeContext, MethodSigContext
+from mypy.nodes import (
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT,
+    TypeInfo, Context, FuncDef
+)
 from mypy.types import (
     Type, CallableType, NoneTyp, Overloaded, TypeVarDef, TypeVarType, Instance,
-    UnionType, UninhabitedType, AnyType,
+    UnionType, UninhabitedType, AnyType, TupleType, TypedDictType, TypeOfAny
 )
 from mypy.constraints import infer_constraints, SUPERTYPE_OF
 from mypy.checker import TypeChecker
-
-
-class TrioPlugin(Plugin):
-    def get_function_hook(
-        self, fullname: str
-    ) -> Optional[Callable[[FunctionContext], Type]]:
-        if fullname in (
-            "contextlib.asynccontextmanager", "async_generator.asynccontextmanager"
-        ):
-            return args_invariant_decorator_callback
-        if fullname == "trio_typing.takes_callable_and_args":
-            return takes_callable_and_args_callback
-        if fullname == "async_generator.async_generator":
-            return async_generator_callback
-        if fullname == "async_generator.yield_":
-            return yield_callback
-        if fullname == "async_generator.yield_from_":
-            return yield_from_callback
-        return None
-
-    def get_method_hook(
-        self, fullname: str
-    ) -> Optional[Callable[[MethodContext], Type]]:
-        if fullname == "trio_typing.TaskStatus.started":
-            return started_callback
-        return None
+from mypy.argmap import map_actuals_to_formals
 
 
 def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
@@ -60,6 +40,9 @@ def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
             )
     return ctx.default_return_type
 
+
+######################################################################
+# @async_generator
 
 def decode_agen_types_from_return_type(
     ctx: FunctionContext, original_async_return_type: Type
@@ -244,6 +227,9 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
 
     return ctx.default_return_type
 
+
+######################################################################
+# TaskStatus.started()
 
 def started_callback(ctx: MethodContext) -> Type:
     """Raise an error if task_status.started() is called without an argument
@@ -430,6 +416,218 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
     except ValueError as ex:
         ctx.api.fail(f"invalid use of @takes_callable_and_args: {ex}", ctx.context)
         return ctx.default_return_type
+
+
+######################################################################
+# functools.partial
+
+def partial_init_callback(ctx: FunctionContext) -> Type:
+    # As defined in the stub file, functools.partial has one type parameter,
+    # [0] the return type of the wrapped function. We give it additional fake
+    # type parameters corresponding to:
+    # [1]: the type of '.args', typically a tuple
+    # [2]: the type of '.keywords', typically a TypedDict
+    # [3]: the type of '.func', the function passed to partial()
+
+    if len(ctx.args) != 3 or len(ctx.arg_types[0]) != 1:
+        ctx.api.fail("improper functools.partial() invocation", ctx.context)
+        return ctx.default_return_type
+
+    func_type = ctx.arg_types[0][0]
+
+    bound_args = []  # type: List[Type]
+    bound_args_starred = []  # type: List[Type]
+    seen_tuple_type = set()  # type: Set[TupleType]
+    for kind, ty in zip(ctx.arg_kinds[1], ctx.arg_types[1]):
+        if kind == ARG_STAR:
+            if isinstance(ty, TupleType):
+                # An invocation that uses *some_tuple will include
+                # one entry in arg_types for each type in the tuple,
+                # but they will all have the overall tuple type.
+                # So we splat the whole tuple the first time we
+                # see it, and ignore it thereafter.
+                if ty not in seen_tuple_type:
+                    seen_tuple_type.add(ty)
+                    bound_args.extend(ty.items)
+            else:
+                # Invocation that splats something other than Tuple[X, Y].
+                # This could be List[T], Tuple[U, ...], and so on.
+                bound_args_starred.append(ty)
+        else:
+            bound_args.append(ty)
+
+    args_type = None  # type: Type
+    if not bound_args_starred:
+        args_type = TupleType(
+            bound_args,
+            ctx.api.named_generic_type(
+                "builtins.tuple", [AnyType(TypeOfAny.implementation_artifact)]
+            )
+        )
+    elif (
+        len(bound_args_starred) == 1
+        and len(bound_args) == 0
+        and isinstance(bound_args_starred[0], Instance)
+        and len(bound_args_starred[0].args) == 1
+    ):
+        args_type = ctx.api.named_generic_type(
+            "builtins.tuple", [bound_args_starred[0].args[0]]
+        )
+    else:
+        args_type = ctx.api.named_generic_type(
+            "builtins.tuple", [AnyType(TypeOfAny.implementation_artifact)]
+        )
+
+    bound_keywords = OrderedDict()  # type: OrderedDict[str, Type]
+    bound_keywords_starred = []  # type: List[Type]
+
+    for kind, name, ty in zip(ctx.arg_kinds[2], ctx.arg_names[2], ctx.arg_types[2]):
+        if kind == ARG_STAR2:
+            if isinstance(ty, TypedDictType):
+                bound_keywords.update(ty.items)
+            else:
+                bound_keywords_starred.append(ty)
+        else:
+            assert name is not None
+            bound_keywords[name] = ty
+
+    keywords_type = None  # type: Type
+    can_use_typeddict = "mypy_extensions" in ctx.api.modules  # type: ignore
+    if not bound_keywords_starred and can_use_typeddict:
+        keywords_type = TypedDictType(
+            bound_keywords,
+            set(bound_keywords.keys()),
+            ctx.api.named_generic_type("mypy_extensions._TypedDict", []),
+        )
+    else:
+        keywords_type = ctx.api.named_generic_type(
+            "builtins.dict",
+            [
+                ctx.api.named_generic_type("builtins.str", []),
+                AnyType(TypeOfAny.implementation_artifact),
+            ],
+        )
+
+    if (
+        isinstance(ctx.default_return_type, Instance)
+        and ctx.default_return_type.type.fullname() == "functools.partial"
+        and len(ctx.default_return_type.args) == 1
+    ):
+        return ctx.default_return_type.copy_modified(
+            args=[
+                ctx.default_return_type.args[0],
+                args_type,
+                keywords_type,
+                func_type,
+            ]
+        )
+    else:
+        ctx.api.fail(
+            "unexpected default return type in functools.partial() invocation",
+            ctx.context,
+        )
+        return ctx.default_return_type
+
+
+def partial_args_callback(ctx: AttributeContext) -> Type:
+    if isinstance(ctx.type, Instance) and len(ctx.type.args) == 4:
+        return ctx.type.args[1]
+    return ctx.default_attr_type
+
+
+def partial_keywords_callback(ctx: AttributeContext) -> Type:
+    if isinstance(ctx.type, Instance) and len(ctx.type.args) == 4:
+        return ctx.type.args[2]
+    return ctx.default_attr_type
+
+
+def partial_func_callback(ctx: AttributeContext) -> Type:
+    if isinstance(ctx.type, Instance) and len(ctx.type.args) == 4:
+        return ctx.type.args[3]
+    return ctx.default_attr_type
+
+
+def partial_call_callback(ctx: FunctionContext) -> Type:
+    # We need to get the type of the functools.partial instance
+    # we're invoking __call__ on, in order to get the bound
+    # args/keywords types that we stashed in partial_init_callback.
+    # But currently mypy doesn't provide that: instead of a method
+    # hook for functools.partial.__call__ (which would provide the
+    # self type), we get a function hook for "__call__ of partial",
+    # and have to go groveling in our callstack for the self type.
+
+    for idx in itertools.count():
+        try:
+            frame = sys._getframe(idx)
+        except ValueError:
+            ctx.api.fail(
+                "hack for locating the callee type on a functools.partial "
+                "invocation stopped working",
+                ctx.context,
+            )
+            return ctx.default_return_type
+        if frame.f_code.co_name == "check_call_expr_with_callee_type":
+            callee_type = frame.f_locals["callee_type"]
+            break
+
+    if (
+        not isinstance(callee_type, Instance)
+        or callee_type.type.fullname() != "functools.partial"
+        or len(callee_type.args) != 4
+    ):
+        return ctx.default_return_type
+
+    
+
+    import pdb; pdb.set_trace()
+
+
+######################################################################
+# plugin entry point
+
+function_handler = {
+    "contextlib.asynccontextmanager": args_invariant_decorator_callback,
+    "async_generator.asynccontextmanager": args_invariant_decorator_callback,
+    "trio_typing.takes_callable_and_args": takes_callable_and_args_callback,
+    "async_generator.async_generator": async_generator_callback,
+    "async_generator.yield_": yield_callback,
+    "async_generator.yield_from_": yield_from_callback,
+    "functools.partial": partial_init_callback,
+    "__call__ of partial": partial_call_callback,
+}
+
+attribute_handler = {
+    "functools.partial.args": partial_args_callback,
+    "functools.partial.keywords": partial_keywords_callback,
+    "functools.partial.func": partial_func_callback,
+}
+
+method_handler = {
+    "trio_typing.TaskStatus.started": started_callback,
+}
+
+
+class TrioPlugin(Plugin):
+    def get_function_hook(
+        self, fullname: str
+    ) -> Optional[Callable[[FunctionContext], Type]]:
+        #if "partial" in fullname:
+        #    print(fullname)
+        return function_handler.get(fullname)
+
+    def get_attribute_hook(
+        self, fullname: str
+    ) -> Optional[Callable[[AttributeContext], Type]]:
+        if "partial" in fullname:
+            print(fullname)
+        return attribute_handler.get(fullname)
+
+    def get_method_hook(
+        self, fullname: str
+    ) -> Optional[Callable[[MethodContext], Type]]:
+        #if "partial" in fullname:
+        #    print(fullname)
+        return method_handler.get(fullname)
 
 
 def plugin(version: str) -> typing_Type[Plugin]:
