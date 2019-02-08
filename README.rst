@@ -155,33 +155,8 @@ Limitations
   every arity we want to be able to use.) You can work around this with
   a ``# type: ignore`` comment.
 
-* While ``trio.abc.SendChannel`` and ``trio.abc.ReceiveChannel`` are declared as
-  generic in the stubs, actual trio doesn't declare them as such, so workarounds
-  are required if you want to indicate the types of objects in your channels::
-
-      # Works
-      send, receive = cast(
-          Tuple["trio.abc.SendChannel[int]", "trio.abc.ReceiveChannel[int]"],
-          trio.open_memory_channel(10)
-      )
-
-      # Works on Python 3.6+
-      send: "trio.abc.SendChannel[int]"
-      receive: "trio.abc.ReceiveChannel[int]"
-      send, receive = trio.open_memory_channel(10)
-
-      # Doesn't work
-      send, receive = trio.open_memory_channel[bytes](10)
-
-      # Works
-      if TYPE_CHECKING:
-          BytesChannel = trio.abc.ReceiveChannel[bytes]
-      else:
-          BytesChannel = trio.abc.ReceiveChannel
-      class MyChannel(BytesChannel): ...
-
-      # Typechecks but doesn't work
-      class MyChannel(trio.abc.ReceiveChannel[bytes]): ...
+* ``outcome.capture()`` and ``outcome.acapture()`` currently don't typecheck
+  their arguments at all.
 
 License
 ~~~~~~~
