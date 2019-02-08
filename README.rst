@@ -158,6 +158,15 @@ Limitations
 * ``outcome.capture()`` and ``outcome.acapture()`` currently don't typecheck
   their arguments at all.
 
+Running the tests
+~~~~~~~~~~~~~~~~~
+
+``trio-typing`` comes with a fairly extensive testsuite; it doesn't test all
+the mechanical parts of the stubs, but does exercise most of the interesting
+plugin behavior. You can run it after installing, with::
+
+    pytest -p trio_typing._tests.datadriven --pyargs trio_typing
+
 License
 ~~~~~~~
 
