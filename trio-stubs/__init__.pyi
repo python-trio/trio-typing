@@ -23,9 +23,7 @@ from typing import (
     IO,
     overload,
 )
-from trio_typing import (
-    Nursery, TaskStatus, ArgsForCallable, takes_callable_and_args
-)
+from trio_typing import Nursery, TaskStatus, ArgsForCallable, takes_callable_and_args
 from typing_extensions import Protocol, Literal
 import attr
 import signal
@@ -35,11 +33,7 @@ import subprocess
 import ssl
 import sys
 import trio
-from . import (
-    hazmat as hazmat,
-    socket as socket,
-    abc as abc,
-)
+from . import hazmat as hazmat, socket as socket, abc as abc
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
@@ -161,9 +155,7 @@ class CapacityLimiter:
 class Sempahore:
     value: int
     max_value: Optional[int]
-    def __init__(
-        self, initial_value: int, *, max_value: Optional[int] = None
-    ): ...
+    def __init__(self, initial_value: int, *, max_value: Optional[int] = None): ...
     def acquire_nowait(self) -> None: ...
     async def acquire(self) -> None: ...
     def release(self) -> None: ...
@@ -249,9 +241,9 @@ class _MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
 
 # written as a class so you can say open_memory_channel[int](5)
 class open_memory_channel(Tuple[_MemorySendChannel[T], _MemoryReceiveChannel[T]]):
-    def __new__(cls, max_buffer_size: float) -> Tuple[
-        _MemorySendChannel[T](), _MemoryReceiveChannel[T]
-    ]: ...
+    def __new__(
+        cls, max_buffer_size: float
+    ) -> Tuple[_MemorySendChannel[T](), _MemoryReceiveChannel[T]]: ...
     def __init__(self, max_buffer_size: float): ...
 
 # _signals
@@ -336,7 +328,6 @@ async def open_file(
     closefd: bool = ...,
     opener: Optional[Callable[[Union[int, str], str], int]] = ...,
 ) -> _AsyncIOBase: ...
-
 @overload
 def wrap_file(obj: Union[TextIO, io.TextIOBase]) -> _AsyncTextIOBase: ...
 @overload
@@ -374,7 +365,7 @@ class Path(pathlib.PurePath):
         buffering: int = ...,
         encoding: Optional[str] = ...,
         errors: Optional[str] = ...,
-        newline: Optional[str] = ...
+        newline: Optional[str] = ...,
     ) -> _AsyncIOBase: ...
     async def owner(self) -> str: ...
     async def rename(self, target: Union[str, pathlib.PurePath]) -> None: ...
@@ -465,7 +456,6 @@ class SSLStream(trio.abc.Stream):
         def session(self) -> Optional[ssl.SSLSession]: ...
         @property
         def session_reused(self) -> bool: ...
-
     def __init__(
         self,
         transport_stream: trio.abc.Stream,

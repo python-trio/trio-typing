@@ -4,14 +4,17 @@ import trio
 import trio_typing
 import async_generator
 
+
 @async_generator.async_generator
 async def compat_agen():
     pass
+
 
 if sys.version_info >= (3, 6):
     exec("async def native_agen():\n  yield 42\n")
 else:
     native_agen = compat_agen
+
 
 def test_runtime():
     assert isinstance(compat_agen(), trio_typing.AsyncGenerator)

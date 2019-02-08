@@ -40,7 +40,7 @@ class TrioToken:
         self,
         sync_fn: Callable[[ArgsForCallable], None],
         *args: ArgsForCallable,
-        idempotent: bool = False
+        idempotent: bool = False,
     ) -> None: ...
 
 # _core._unbounded_queue

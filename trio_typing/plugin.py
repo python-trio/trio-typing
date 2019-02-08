@@ -4,11 +4,27 @@ from typing_extensions import Literal
 from typing import Type as typing_Type
 from mypy.plugin import Plugin, FunctionContext, MethodContext, CheckerPluginInterface
 from mypy.nodes import (
-    ARG_POS, ARG_STAR, TypeInfo, Context, FuncDef, StrExpr, IntExpr, Expression
+    ARG_POS,
+    ARG_STAR,
+    TypeInfo,
+    Context,
+    FuncDef,
+    StrExpr,
+    IntExpr,
+    Expression,
 )
 from mypy.types import (
-    Type, CallableType, NoneTyp, Overloaded, TypeVarDef, TypeVarType, Instance,
-    UnionType, UninhabitedType, AnyType, TypeOfAny
+    Type,
+    CallableType,
+    NoneTyp,
+    Overloaded,
+    TypeVarDef,
+    TypeVarType,
+    Instance,
+    UnionType,
+    UninhabitedType,
+    AnyType,
+    TypeOfAny,
 )
 from mypy.checker import TypeChecker
 
@@ -18,7 +34,8 @@ class TrioPlugin(Plugin):
         self, fullname: str
     ) -> Optional[Callable[[FunctionContext], Type]]:
         if fullname in (
-            "contextlib.asynccontextmanager", "async_generator.asynccontextmanager"
+            "contextlib.asynccontextmanager",
+            "async_generator.asynccontextmanager",
         ):
             return args_invariant_decorator_callback
         if fullname == "trio.open_file":
@@ -51,9 +68,8 @@ def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
     # (adapted from the @contextmanager support in mypy's builtin plugin)
     if ctx.arg_types and len(ctx.arg_types[0]) == 1:
         arg_type = ctx.arg_types[0][0]
-        if (
-            isinstance(arg_type, CallableType)
-            and isinstance(ctx.default_return_type, CallableType)
+        if isinstance(arg_type, CallableType) and isinstance(
+            ctx.default_return_type, CallableType
         ):
             return ctx.default_return_type.copy_modified(
                 arg_types=arg_type.arg_types,
@@ -68,11 +84,10 @@ def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
 def open_return_type(
     api: CheckerPluginInterface, args: List[List[Expression]]
 ) -> Optional[Type]:
-
     def return_type(word: Literal["Text", "Buffered", "Raw"]) -> Type:
         return api.named_generic_type(
             "typing.Awaitable",
-            [api.named_generic_type("trio._Async{}IOBase".format(word), [])]
+            [api.named_generic_type("trio._Async{}IOBase".format(word), [])],
         )
 
     if len(args) < 2 or len(args[1]) == 0:
@@ -112,9 +127,11 @@ def open_return_type(
     # Mode wasn't a constant or we couldn't make sense of it
     return None
 
+
 def open_file_callback(ctx: FunctionContext) -> Type:
     """Infer a better return type for trio.open_file()."""
     return open_return_type(ctx.api, ctx.args) or ctx.default_return_type
+
 
 def open_method_callback(ctx: MethodContext) -> Type:
     """Infer a better return type for trio.Path.open()."""
@@ -189,12 +206,20 @@ def decode_agen_types_from_return_type(
     if send_type is None:
         send_type = NoneTyp(ctx.context.line, ctx.context.column)
     if not other_arms:
-        return yield_type, send_type, UninhabitedType(
-            is_noreturn=True, line=ctx.context.line, column=ctx.context.column
+        return (
+            yield_type,
+            send_type,
+            UninhabitedType(
+                is_noreturn=True, line=ctx.context.line, column=ctx.context.column
+            ),
         )
     else:
-        return yield_type, send_type, UnionType.make_simplified_union(
-            other_arms, ctx.context.line, ctx.context.column
+        return (
+            yield_type,
+            send_type,
+            UnionType.make_simplified_union(
+                other_arms, ctx.context.line, ctx.context.column
+            ),
         )
 
 
@@ -222,9 +247,8 @@ def async_generator_callback(ctx: FunctionContext) -> Type:
     if (
         isinstance(new_return_type, CallableType)
         and isinstance(new_return_type.ret_type, Instance)
-        and new_return_type.ret_type.type.fullname() == (
-            'trio_typing.CompatAsyncGenerator'
-        )
+        and new_return_type.ret_type.type.fullname()
+        == ("trio_typing.CompatAsyncGenerator")
         and len(new_return_type.ret_type.args) == 3
     ):
         return new_return_type.copy_modified(
@@ -317,7 +341,8 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
 
     if (
         isinstance(arg_type, Instance)
-        and arg_type.type.fullname() in (
+        and arg_type.type.fullname()
+        in (
             "trio_typing.CompatAsyncGenerator",
             "trio_typing.AsyncGenerator",
             "typing.AsyncGenerator",
@@ -366,7 +391,7 @@ def started_callback(ctx: MethodContext) -> Type:
         ctx.api.fail(
             "TaskStatus.started() requires an argument for types other than "
             "TaskStatus[None]",
-            ctx.context
+            ctx.context,
         )
     return ctx.default_return_type
 
@@ -495,9 +520,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                     + ([None] * len(type_var_types))
                     + callable_ty.arg_names[callable_args_idx + 1 :]
                 ),
-                variables=(
-                    callable_ty.variables + type_var_defs
-                ),
+                variables=(callable_ty.variables + type_var_defs),
             )
             expanded_fns.append(
                 fn_type.copy_modified(
@@ -516,9 +539,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                         + ([None] * len(type_var_types))
                         + fn_type.arg_names[args_idx + 1 :]
                     ),
-                    variables=(
-                        fn_type.variables + type_var_defs
-                    ),
+                    variables=(fn_type.variables + type_var_defs),
                 )
             )
             type_var_defs.append(

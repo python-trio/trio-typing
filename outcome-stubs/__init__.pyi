@@ -47,9 +47,7 @@ Outcome = Union[Value[T], Error]
 
 # TODO: narrower typing for these (the args and kwargs should
 # be acceptable to the callable)
-def capture(
-    sync_fn: Callable[..., T], *args: Any, **kwargs: Any
-) -> Outcome[T]: ...
+def capture(sync_fn: Callable[..., T], *args: Any, **kwargs: Any) -> Outcome[T]: ...
 async def acapture(
     async_fn: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any
 ) -> Outcome[T]: ...

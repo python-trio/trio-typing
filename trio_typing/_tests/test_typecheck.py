@@ -2,13 +2,16 @@ import os
 import sys
 
 if "trio_typing._tests.datadriven" not in sys.modules:
+
     def test_typecheck_dummy():
         import warnings
+
         warnings.warn(
             "Type-checking tests skipped because the plugin wasn't loaded. "
             "Run pytest with -p trio_typing._tests.datadriven to run them.",
-            RuntimeWarning
+            RuntimeWarning,
         )
+
 
 else:
     from mypy import build
@@ -16,7 +19,6 @@ else:
     from mypy.options import Options
     from mypy.test.data import DataDrivenTestCase, DataSuite
     from mypy.test.helpers import assert_string_arrays_equal
-
 
     class TrioTestSuite(DataSuite):
         data_prefix = os.path.join(
@@ -38,10 +40,10 @@ else:
             # must specify something for config_file, else the plugins don't get loaded
             options.config_file = "/dev/null"
             result = build.build(
-                sources=[BuildSource('main', None, src)], options=options
+                sources=[BuildSource("main", None, src)], options=options
             )
             assert_string_arrays_equal(
                 testcase.output,
                 result.errors,
-                "Unexpected output from {0.file} line {0.line}".format(testcase)
+                "Unexpected output from {0.file} line {0.line}".format(testcase),
             )
