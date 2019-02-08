@@ -21,12 +21,20 @@ Quickstart
 
 Install with::
 
-    pip install -U trio-typing
+    pip install -U git+https://github.com/oremanj/trio-typing
+
+(Note that we currently depend on unbound cancel scopes, which are not yet in
+a released version of Trio; if you don't like living on the bleeding edge,
+maybe come back after Trio v0.11.0 is released.)
 
 Enable the plugin in your ``mypy.ini`` (optional, but recommended)::
 
     [mypy]
     plugins = trio_typing.plugin
+
+Start running mypy on your Trio code! You may want to import some typing
+names from ``trio_typing``, like ``Nursery`` and ``TaskStatus``; see below
+for more details.
 
 What's in the box?
 ~~~~~~~~~~~~~~~~~~
@@ -79,8 +87,9 @@ The ``trio_typing.plugin`` mypy plugin provides:
   file object in binary mode and ``await trio.open_file("bar")`` returns
   an async file object in text mode
 
-* Signature checking for ``task_status.started()``, so it raises an error if
-  the ``task_status`` object is not of type ``TaskStatus[None]``
+* Signature checking for ``task_status.started()`` with no arguments,
+  so it raises an error if the ``task_status`` object is not of type
+  ``TaskStatus[None]``
 
 * Boilerplate reduction for functions that take parameters ``(fn, *args)``
   and ultimately invoke ``fn(*args)``: just write
