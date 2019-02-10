@@ -27,7 +27,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        "trio",
+        "trio >= 0.11.0",
         "mypy >= 0.660",
         "typing_extensions >= 3.7.2",
         "mypy_extensions >= 0.4.1",

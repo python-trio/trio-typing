@@ -21,11 +21,7 @@ Quickstart
 
 Install with::
 
-    pip install -U git+https://github.com/oremanj/trio-typing
-
-(Note that we currently depend on unbound cancel scopes, which are not yet in
-a released version of Trio; if you don't like living on the bleeding edge,
-maybe come back after Trio v0.11.0 is released.)
+    pip install -U trio-typing
 
 Enable the plugin in your ``mypy.ini`` (optional, but recommended)::
 
