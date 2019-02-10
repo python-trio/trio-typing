@@ -5,9 +5,7 @@ exec(open("trio_typing/_version.py", encoding="utf-8").read())
 
 LONG_DESC = open("README.rst", encoding="utf-8").read()
 
-stub_packages = [
-    "async_generator-stubs", "outcome-stubs", "trio-stubs"
-]
+stub_packages = ["async_generator-stubs", "outcome-stubs", "trio-stubs"]
 
 setup(
     name="trio-typing",
@@ -19,12 +17,7 @@ setup(
     author="Joshua Oreman",
     author_email="oremanj@gmail.com",
     license="MIT -or- Apache License 2.0",
-    packages=[
-        "async_generator-stubs",
-        "outcome-stubs",
-        "trio-stubs",
-        "trio_typing",
-    ],
+    packages=["async_generator-stubs", "outcome-stubs", "trio-stubs", "trio_typing"],
     include_package_data=True,
     install_requires=[
         "trio >= 0.11.0",
@@ -32,9 +25,7 @@ setup(
         "typing_extensions >= 3.7.2",
         "mypy_extensions >= 0.4.1",
     ],
-    keywords=[
-        "async", "trio", "mypy"
-    ],
+    keywords=["async", "trio", "mypy"],
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "License :: OSI Approved :: Apache Software License",

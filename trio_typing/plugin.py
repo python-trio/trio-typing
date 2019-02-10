@@ -116,7 +116,7 @@ def open_return_type(
                 options = [
                     api.named_generic_type("trio._AsyncRawIOBase", []),
                     api.named_generic_type("trio._AsyncBufferedIOBase", []),
-                ]
+                ]  # type: List[Type]
                 return api.named_generic_type(
                     "typing.Awaitable", [UnionType.make_simplified_union(options)]
                 )
@@ -135,7 +135,11 @@ def open_file_callback(ctx: FunctionContext) -> Type:
 
 def open_method_callback(ctx: MethodContext) -> Type:
     """Infer a better return type for trio.Path.open()."""
-    return open_return_type(ctx.api, [[]] + ctx.args) or ctx.default_return_type
+
+    # Path.open() doesn't take the first (filename) argument of open_file(),
+    # so we need to shift by one.
+    args_with_path = cast(List[List[Expression]], [[]]) + ctx.args
+    return open_return_type(ctx.api, args_with_path) or ctx.default_return_type
 
 
 def decode_agen_types_from_return_type(

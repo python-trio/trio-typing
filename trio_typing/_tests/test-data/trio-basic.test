@@ -4,7 +4,7 @@ import trio.testing
 from typing import List, Sequence
 
 async def sleep_sort(values: Sequence[float]) -> List[float]:
-    result: List[float] = []
+    result = []  # type: List[float]
 
     async def worker(value: float) -> None:
         await trio.sleep(value)

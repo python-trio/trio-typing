@@ -1,4 +1,14 @@
-from typing import Union, AnyStr, Optional, Tuple, List, Any, TypeVar, overload
+from typing import (
+    Union,
+    AnyStr,
+    Optional,
+    Iterable,
+    Tuple,
+    List,
+    Any,
+    TypeVar,
+    overload,
+)
 import sys
 import trio
 

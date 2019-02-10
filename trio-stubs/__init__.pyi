@@ -28,6 +28,7 @@ from typing_extensions import Protocol, Literal
 import attr
 import signal
 import io
+import os
 import pathlib
 import subprocess
 import ssl
@@ -243,7 +244,7 @@ class _MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
 class open_memory_channel(Tuple[_MemorySendChannel[T], _MemoryReceiveChannel[T]]):
     def __new__(
         cls, max_buffer_size: float
-    ) -> Tuple[_MemorySendChannel[T](), _MemoryReceiveChannel[T]]: ...
+    ) -> Tuple[_MemorySendChannel[T], _MemoryReceiveChannel[T]]: ...
     def __init__(self, max_buffer_size: float): ...
 
 # _signals
