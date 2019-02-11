@@ -1,3 +1,19 @@
+.. image:: https://img.shields.io/pypi/v/trio-typing.svg
+   :target: https://pypi.org/project/trio-typing
+   :alt: Latest PyPI version
+
+.. image:: https://travis-ci.org/oremanj/trio-typing.svg?branch=master
+   :target: https://travis-ci.org/oremanj/trio-typing
+   :alt: Automated test status
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/ambv/black
+   :alt: Code style: black
+
+.. image:: http://www.mypy-lang.org/static/mypy_badge.svg
+   :target: http://www.mypy-lang.org/
+   :alt: Checked with mypy
+
 trio-typing: static typing for Trio and related projects
 ========================================================
 
