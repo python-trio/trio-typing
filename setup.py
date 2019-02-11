@@ -11,7 +11,7 @@ setup(
     name="trio-typing",
     version=__version__,
     description="Static type checking support for Trio and related projects",
-    url="https://github.com/oremanj/trio-typing",
+    url="https://github.com/python-trio/trio-typing",
     long_description=LONG_DESC,
     long_description_content_type="text/x-rst",
     author="Joshua Oreman",

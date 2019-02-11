@@ -2,8 +2,8 @@
    :target: https://pypi.org/project/trio-typing
    :alt: Latest PyPI version
 
-.. image:: https://travis-ci.org/oremanj/trio-typing.svg?branch=master
-   :target: https://travis-ci.org/oremanj/trio-typing
+.. image:: https://travis-ci.org/python-trio/trio-typing.svg?branch=master
+   :target: https://travis-ci.org/python-trio/trio-typing
    :alt: Automated test status
 
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
