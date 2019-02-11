@@ -21,7 +21,9 @@ setup(
     include_package_data=True,
     install_requires=[
         "trio >= 0.11.0",
-        "mypy >= 0.660",
+        # mypy can't be installed on PyPy due to its dependency
+        # on typed-ast
+        "mypy >= 0.660; implementation_name == 'cpython'",
         "typing_extensions >= 3.7.2",
         "mypy_extensions >= 0.4.1",
     ],

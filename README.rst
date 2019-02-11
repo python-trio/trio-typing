@@ -16,18 +16,22 @@ This repository provides:
   to refer to (``Nursery``, ``AsyncGenerator[Y, S]``, ``TaskStatus[T]``) and a mypy
   plugin that smooths over some limitations in the basic type hints.
 
+
 Supported platforms
 ~~~~~~~~~~~~~~~~~~~
 
-To **type-check** code using ``trio-typing``, you need CPython 3.5.2
+To **type-check** code that uses ``trio-typing``, you need CPython 3.5.2
 or later.  (Mypy requires 3.5.2+, and its dependency ``typed-ast``
 doesn't support PyPy.)  We test on Linux using the latest releases
 from the 3.5, 3.6, and 3.7 branches, as well as 3.8-dev nightly. We're
 not knowingly doing anything OS-specific, so other OSes should work
 too.
 
-You should be able to **run** code using ``trio-typing`` on any platform
+You can **run** code that uses ``trio-typing`` on any platform
 supported by Trio, includng PyPy and CPython 3.5.0 and 3.5.1.
+
+Type checkers other than Mypy are not supported, but might work.
+Experience reports and patches to add support are welcome.
 
 
 Quickstart
@@ -45,6 +49,7 @@ Enable the plugin in your ``mypy.ini`` (optional, but recommended)::
 Start running mypy on your Trio code! You may want to import some typing
 names from ``trio_typing``, like ``Nursery`` and ``TaskStatus``; see below
 for more details.
+
 
 What's in the box?
 ~~~~~~~~~~~~~~~~~~
@@ -154,6 +159,7 @@ The ``trio_typing.plugin`` mypy plugin provides:
   falling off the end of the function, unless you run it with
   ``--no-warn-no-return``.
 
+
 Limitations
 ~~~~~~~~~~~
 
@@ -168,6 +174,7 @@ Limitations
 * ``outcome.capture()`` and ``outcome.acapture()`` currently don't typecheck
   their arguments at all.
 
+
 Running the tests
 ~~~~~~~~~~~~~~~~~
 
@@ -176,6 +183,7 @@ the mechanical parts of the stubs, but does exercise most of the interesting
 plugin behavior. You can run it after installing, with::
 
     pytest -p trio_typing._tests.datadriven --pyargs trio_typing
+
 
 License
 ~~~~~~~
