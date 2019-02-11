@@ -8,6 +8,11 @@ matrix:
       env: CHECK_FORMATTING=1
     - python: 3.6
       env: CHECK_TYPING=1
+    - python: 3.5.0
+      dist: trusty
+      env: RUNTIME_ONLY=1
+    - python: pypy3.5
+      env: RUNTIME_ONLY=1
     - python: 3.5
     - python: 3.6
     - python: 3.7

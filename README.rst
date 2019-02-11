@@ -16,6 +16,20 @@ This repository provides:
   to refer to (``Nursery``, ``AsyncGenerator[Y, S]``, ``TaskStatus[T]``) and a mypy
   plugin that smooths over some limitations in the basic type hints.
 
+Supported platforms
+~~~~~~~~~~~~~~~~~~~
+
+To **type-check** code using ``trio-typing``, you need CPython 3.5.2
+or later.  (Mypy requires 3.5.2+, and its dependency ``typed-ast``
+doesn't support PyPy.)  We test on Linux using the latest releases
+from the 3.5, 3.6, and 3.7 branches, as well as 3.8-dev nightly. We're
+not knowingly doing anything OS-specific, so other OSes should work
+too.
+
+You should be able to **run** code using ``trio-typing`` on any platform
+supported by Trio, includng PyPy and CPython 3.5.0 and 3.5.1.
+
+
 Quickstart
 ~~~~~~~~~~
 

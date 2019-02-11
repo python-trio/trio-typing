@@ -57,5 +57,9 @@ else
     mkdir empty
     cd empty
 
-    pytest -W error -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
+    if [ "$RUNTIME_ONLY" = "1" ]; then
+        pytest -W error -ra -v --pyargs trio_typing -k test_runtime
+    else
+        pytest -W error -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
+    fi
 fi
