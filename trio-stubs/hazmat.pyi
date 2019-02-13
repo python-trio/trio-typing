@@ -16,6 +16,7 @@ from typing import (
     Tuple,
 )
 from trio_typing import Nursery, takes_callable_and_args
+from mypy_extensions import VarArg
 import trio
 import outcome
 import contextvars

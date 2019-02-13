@@ -489,7 +489,8 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                             )
                         callable_idx = idx
                         callable_args_idx = idx_
-                        callable_ty = cast(CallableType, ty)
+                        callable_ty = ty
+
         if args_idx == -1:
             raise ValueError("decorated function must take *args: Any")
         if callable_idx == -1 or callable_ty is None:
