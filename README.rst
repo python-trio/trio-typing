@@ -103,8 +103,7 @@ The ``trio_typing`` package provides:
   in determining the return type of ``await async_generator.yield_from_()``.)
 
 * A few types that are only useful with the mypy plugin: ``YieldType[T]``,
-  ``SendType[T]``, ``ArgsForCallable``, and the decorator
-  ``@takes_callable_and_args``.
+  ``SendType[T]``, and the decorator ``@takes_callable_and_args``.
 
 The ``trio_typing.plugin`` mypy plugin provides:
 
@@ -126,11 +125,12 @@ The ``trio_typing.plugin`` mypy plugin provides:
   and ultimately invoke ``fn(*args)``: just write
 
   ::
+      from mypy_extensions import VarArg
 
       @trio_typing.takes_callable_and_args
       def start_soon(
-          async_fn: Callable[[trio_typing.ArgsForCallable], Awaitable[T]],
-          *args: ArgsForCallable,
+          async_fn: Callable[[VarArg()], Awaitable[T]],
+          *args: Any,
           other_keywords: str = are_ok_too,
       ):
           # your implementation here
@@ -138,9 +138,28 @@ The ``trio_typing.plugin`` mypy plugin provides:
   ``start_soon(async_fn, *args)`` will raise an error if ``async_fn(*args)``
   would do so. You can also make the callable take some non-splatted
   arguments; the ``*args`` get inserted at whatever position in the
-  argument list you write ``ArgsForCallable``.
+  argument list you write ``VarArg()``.
 
-  Note: due to mypy limitations, we only support a maximum of 5
+  The above example will always fail when the plugin is not being
+  used. If you want to always pass in such cases, you can use a union::
+
+      @trio_typing.takes_callable_and_args
+      def start_soon(
+          async_fn: Union[
+              Callable[..., Awaitable[T]],
+              Callable[[VarArg()], Awaitable[T]],
+          ],
+          *args: Any,
+          other_keywords: str = are_ok_too,
+      ):
+          # your implementation here
+
+  Without the plugin, this type-checks fine (and allows inference of
+  ``T``), since any callable will match the ``Callable[...,
+  Awaitable[T]]`` option. With the plugin, the entire union will be
+  replaced with specific argument types.
+
+  Note: due to mypy limitations, we only support a maximum of 4
   positional arguments, and keyword arguments can't be passed in this way;
   ``nursery.start_soon(functools.partial(...))`` will pass the type checker
   but won't be able to actually check the argument types.
@@ -180,7 +199,7 @@ Limitations
 ~~~~~~~~~~~
 
 * Calls to variadic Trio functions like ``trio.run()``,
-  ``nursery.start_soon()``, and so on, only can type-check up to five
+  ``nursery.start_soon()``, and so on, only can type-check up to four
   positional arguments. (This number could be increased easily, but
   only at the cost of slower typechecking for everyone; mypy's current
   architecture requires that we generate overload sets initially for

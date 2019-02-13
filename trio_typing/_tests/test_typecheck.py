@@ -36,9 +36,11 @@ else:
                 options.python_version = (3, 6)
             else:
                 options.python_version = sys.version_info[:2]
-            options.plugins = ["trio_typing.plugin"]
-            # must specify something for config_file, else the plugins don't get loaded
-            options.config_file = "/dev/null"
+            if not testcase.name.endswith("_NoPlugin"):
+                options.plugins = ["trio_typing.plugin"]
+                # must specify something for config_file, else the
+                # plugins don't get loaded
+                options.config_file = "/dev/null"
             result = build.build(
                 sources=[BuildSource("main", None, src)], options=options
             )

@@ -11,16 +11,16 @@ from typing import (
     Optional,
     Type,
     TypeVar,
+    Union,
     overload,
 )
 from types import CodeType, FrameType, TracebackType
 from typing_extensions import Protocol
-from mypy_extensions import NamedArg
+from mypy_extensions import NamedArg, VarArg
 
 __all__ = [
     "Nursery",
     "TaskStatus",
-    "ArgsForCallable",
     "takes_callable_and_args",
     "AsyncGenerator",
     "CompatAsyncGenerator",
@@ -30,9 +30,6 @@ T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
 T_co2 = TypeVar("T_co2", covariant=True)
 T_contra = TypeVar("T_contra", contravariant=True)
-
-class ArgsForCallable:
-    pass
 
 def takes_callable_and_args(fn: T) -> T:
     return fn
@@ -49,17 +46,45 @@ class Nursery:
     @takes_callable_and_args
     def start_soon(
         self,
-        async_fn: Callable[[ArgsForCallable], Awaitable[None]],
-        *args: ArgsForCallable,
+        async_fn: Union[
+            # List these explicitly instead of Callable[..., Awaitable[None]]
+            # so that even without the plugin we catch cases of passing a
+            # function with keyword-only arguments to start_soon().
+            Callable[[], Awaitable[None]],
+            Callable[[Any], Awaitable[None]],
+            Callable[[Any, Any], Awaitable[None]],
+            Callable[[Any, Any, Any], Awaitable[None]],
+            Callable[[Any, Any, Any, Any], Awaitable[None]],
+            Callable[[VarArg()], Awaitable[None]],
+        ],
+        *args: Any,
         name: object = None,
     ) -> None: ...
     @takes_callable_and_args
     async def start(
         self,
-        async_fn: Callable[
-            [ArgsForCallable, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+        async_fn: Union[
+            # List these explicitly instead of Callable[..., Awaitable[None]]
+            # so that even without the plugin we can infer the return type
+            # of start(), and fail when a function is passed that doesn't
+            # accept task_status.
+            Callable[[NamedArg(TaskStatus[T], "task_status")], Awaitable[None]],
+            Callable[[Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]],
+            Callable[
+                [Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+            ],
+            Callable[
+                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+            ],
+            Callable[
+                [Any, Any, Any, Any, NamedArg(TaskStatus[T], "task_status")],
+                Awaitable[None],
+            ],
+            Callable[
+                [VarArg(), NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+            ],
         ],
-        *args: ArgsForCallable,
+        *args: Any,
         name: object = None,
     ) -> T: ...
 
