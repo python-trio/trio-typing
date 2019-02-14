@@ -502,7 +502,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         expanded_fns = []  # type: List[CallableType]
         type_var_defs = []  # type: List[TypeVarDef]
         type_var_types = []  # type: List[Type]
-        for arg_idx in range(1, 5):
+        for arg_idx in range(1, 6):
             arg_types = list(fn_type.arg_types)
             arg_types[callable_idx] = callable_ty.copy_modified(
                 arg_types=(

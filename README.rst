@@ -159,7 +159,7 @@ The ``trio_typing.plugin`` mypy plugin provides:
   Awaitable[T]]`` option. With the plugin, the entire union will be
   replaced with specific argument types.
 
-  Note: due to mypy limitations, we only support a maximum of 4
+  Note: due to mypy limitations, we only support a maximum of 5
   positional arguments, and keyword arguments can't be passed in this way;
   ``nursery.start_soon(functools.partial(...))`` will pass the type checker
   but won't be able to actually check the argument types.
@@ -199,7 +199,7 @@ Limitations
 ~~~~~~~~~~~
 
 * Calls to variadic Trio functions like ``trio.run()``,
-  ``nursery.start_soon()``, and so on, only can type-check up to four
+  ``nursery.start_soon()``, and so on, only can type-check up to five
   positional arguments. (This number could be increased easily, but
   only at the cost of slower typechecking for everyone; mypy's current
   architecture requires that we generate overload sets initially for
