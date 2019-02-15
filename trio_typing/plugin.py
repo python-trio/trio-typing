@@ -410,8 +410,8 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         @trio_typing.takes_callable_and_args
         def start_soon(
             self,
-            async_fn: Callable[[trio_typing.ArgsForCallable], None],
-            *args: trio_typing.ArgsForCallable,
+            async_fn: Callable[[VarArg()], None],
+            *args: Any,
         ) -> None: ...
 
     instead of::
@@ -457,56 +457,52 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         fn_type = ctx.arg_types[0][0]  # type: CallableType
         callable_idx = -1  # index in function arguments of the callable
         callable_args_idx = -1  # index in callable arguments of the StarArgs
+        callable_ty = None  # type: Optional[CallableType]
         args_idx = -1  # index in function arguments of the StarArgs
 
         for idx, (kind, ty) in enumerate(zip(fn_type.arg_kinds, fn_type.arg_types)):
-            if (
-                isinstance(ty, Instance)
-                and ty.type.fullname() == "trio_typing.ArgsForCallable"
-            ):
-                if kind != ARG_STAR:
-                    raise ValueError(
-                        "ArgsForCallable must be used with a *args argument "
-                        "in the decorated function"
-                    )
+            if isinstance(ty, AnyType) and kind == ARG_STAR:
                 assert args_idx == -1
                 args_idx = idx
-            elif isinstance(ty, CallableType) and kind == ARG_POS:
+            elif isinstance(ty, (UnionType, CallableType)) and kind == ARG_POS:
+                # turn Union[Callable[..., T], Callable[[VarArg()], T]]
+                # into Callable[[VarArg()], T]
+                # (the union makes it not fail when the plugin is not being used)
+                if isinstance(ty, UnionType):
+                    for arm in ty.items:
+                        if (
+                            isinstance(arm, CallableType)
+                            and not arm.is_ellipsis_args
+                            and any(kind_ == ARG_STAR for kind_ in arm.arg_kinds)
+                        ):
+                            ty = arm
+                            break
+                    else:
+                        continue
+
                 for idx_, (kind_, ty_) in enumerate(zip(ty.arg_kinds, ty.arg_types)):
-                    if (
-                        isinstance(ty_, Instance)
-                        and ty_.type.fullname() == "trio_typing.ArgsForCallable"
-                    ):
-                        if kind != ARG_POS:
-                            raise ValueError(
-                                "ArgsForCallable must be used with a positional "
-                                "argument in the callable type that the decorated "
-                                "function takes"
-                            )
+                    if isinstance(ty_, AnyType) and kind_ == ARG_STAR:
                         if callable_idx != -1:
                             raise ValueError(
-                                "ArgsForCallable may only be used once as the type "
-                                "of an argument to a callable type that the "
-                                "decorated function takes"
+                                "decorated function may only take one callable "
+                                "that has an argument of type VarArg()"
                             )
                         callable_idx = idx
                         callable_args_idx = idx_
+                        callable_ty = ty
+
         if args_idx == -1:
+            raise ValueError("decorated function must take *args: Any")
+        if callable_idx == -1 or callable_ty is None:
             raise ValueError(
-                "decorated function must take *args with type "
-                "trio_typing.ArgsForCallable"
-            )
-        if callable_idx == -1:
-            raise ValueError(
-                "decorated function must take a callable that has an "
-                "argument of type trio_typing.ArgsForCallable"
+                "decorated function must take a callable that has a "
+                "argument of type mypy_extensions.VarArg()"
             )
 
         expanded_fns = []  # type: List[CallableType]
         type_var_defs = []  # type: List[TypeVarDef]
         type_var_types = []  # type: List[Type]
-        for arg_idx in range(1, 5):
-            callable_ty = cast(CallableType, fn_type.arg_types[callable_idx])
+        for arg_idx in range(1, 7):  # provides overloads for 0 through 5 arguments
             arg_types = list(fn_type.arg_types)
             arg_types[callable_idx] = callable_ty.copy_modified(
                 arg_types=(

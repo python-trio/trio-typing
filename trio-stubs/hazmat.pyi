@@ -15,7 +15,8 @@ from typing import (
     TypeVar,
     Tuple,
 )
-from trio_typing import Nursery, ArgsForCallable, takes_callable_and_args
+from trio_typing import Nursery, takes_callable_and_args
+from mypy_extensions import VarArg
 import trio
 import outcome
 import contextvars
@@ -38,8 +39,8 @@ class TrioToken:
     @takes_callable_and_args
     def run_sync_soon(
         self,
-        sync_fn: Callable[[ArgsForCallable], None],
-        *args: ArgsForCallable,
+        sync_fn: Union[Callable[..., None], Callable[[VarArg()], None]],
+        *args: Any,
         idempotent: bool = False,
     ) -> None: ...
 
@@ -73,8 +74,10 @@ def current_trio_token() -> TrioToken: ...
 def reschedule(task: Task, next_send: outcome.Outcome[Any] = ...) -> None: ...
 @takes_callable_and_args
 def spawn_system_task(
-    async_fn: Callable[[ArgsForCallable], Awaitable[None]],
-    *args: ArgsForCallable,
+    async_fn: Union[
+        Callable[..., Awaitable[None]], Callable[[VarArg()], Awaitable[None]]
+    ],
+    *args: Any,
     name: object = ...,
 ) -> Task: ...
 def add_instrument(instrument: trio.abc.Instrument) -> None: ...

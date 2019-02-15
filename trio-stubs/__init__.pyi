@@ -23,8 +23,9 @@ from typing import (
     IO,
     overload,
 )
-from trio_typing import Nursery, TaskStatus, ArgsForCallable, takes_callable_and_args
+from trio_typing import Nursery, TaskStatus, takes_callable_and_args
 from typing_extensions import Protocol, Literal
+from mypy_extensions import VarArg
 import attr
 import signal
 import io
@@ -109,8 +110,8 @@ def current_effective_deadline() -> float: ...
 def current_time() -> float: ...
 @takes_callable_and_args
 def run(
-    afn: Callable[[ArgsForCallable], Awaitable[T]],
-    *args: ArgsForCallable,
+    afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
+    *args: Any,
     clock: trio.abc.Clock = ...,
     instruments: Sequence[trio.abc.Instrument] = ...,
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
@@ -194,18 +195,20 @@ class BlockingTrioPortal:
     def __init__(self, trio_token: Optional[trio.hazmat.TrioToken] = None) -> None: ...
     @takes_callable_and_args
     def run(
-        self, afn: Callable[[ArgsForCallable], Awaitable[T]], *args: ArgsForCallable
+        self,
+        afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
+        *args: Any,
     ) -> T: ...
     @takes_callable_and_args
     def run_sync(
-        self, fn: Callable[[ArgsForCallable], T], *args: ArgsForCallable
+        self, fn: Union[Callable[..., T], Callable[[VarArg()], T]], *args: Any
     ) -> T: ...
 
 def current_default_worker_thread_limiter() -> CapacityLimiter: ...
 @takes_callable_and_args
 async def run_sync_in_worker_thread(
-    sync_fn: Callable[[ArgsForCallable], T],
-    *args: ArgsForCallable,
+    sync_fn: Union[Callable[..., T], Callable[[VarArg()], T]],
+    *args: Any,
     cancellable: bool = False,
     limiter: Optional[CapacityLimiter] = None,
 ) -> T: ...

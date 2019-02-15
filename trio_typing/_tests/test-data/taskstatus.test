@@ -26,3 +26,32 @@ async def parent() -> None:
         result2 = await nursery.start(child2, 10)
         reveal_type(result)  # E: Revealed type is 'builtins.int*'
         reveal_type(result2)  # E: Revealed type is 'None'
+
+[case testTaskStatus_NoPlugin]
+import trio
+from trio_typing import TaskStatus
+
+async def child(arg: int, *, task_status: TaskStatus[int]) -> None:
+    await trio.sleep(arg)
+    task_status.started("hi")  # E: Argument 1 to "started" of "TaskStatus" has incompatible type "str"; expected "int"
+    task_status.started()
+
+async def child2(
+    arg: int, *, task_status: TaskStatus[None] = trio.TASK_STATUS_IGNORED
+) -> None:
+    await trio.sleep(arg)
+    task_status.started()
+    await child(arg, task_status=task_status)  # E: Argument "task_status" to "child" has incompatible type "TaskStatus[None]"; expected "TaskStatus[int]"
+
+async def parent() -> None:
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(child, 10)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Union[Callable[[], Awaitable[None]], Callable[[Any], Awaitable[None]], Callable[[Any, Any], Awaitable[None]], Callable[[Any, Any, Any], Awaitable[None]], Callable[[Any, Any, Any, Any], Awaitable[None]], Callable[[VarArg(Any)], Awaitable[None]]]"
+        nursery.start_soon(child2)
+        nursery.start_soon(child2, "hi")
+        nursery.start_soon(child2, 50)
+        await nursery.start(child)
+        await nursery.start(child, "hi")
+        result = await nursery.start(child, 10)
+        result2 = await nursery.start(child2, 10)
+        reveal_type(result)  # E: Revealed type is 'builtins.int*'
+        reveal_type(result2)  # E: Revealed type is 'None'
