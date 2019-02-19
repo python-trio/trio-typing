@@ -122,9 +122,8 @@ The ``trio_typing.plugin`` mypy plugin provides:
   ``TaskStatus[None]``
 
 * Boilerplate reduction for functions that take parameters ``(fn, *args)``
-  and ultimately invoke ``fn(*args)``: just write
+  and ultimately invoke ``fn(*args)``: just write::
 
-  ::
       from mypy_extensions import VarArg
 
       @trio_typing.takes_callable_and_args
