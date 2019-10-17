@@ -555,7 +555,6 @@ class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
     stdio: Optional[StapledStream]
     args: Union[str, Sequence[str]]
     pid: int
-
     @property
     def returncode(self) -> Optional[int]: ...
     async def aclose(self) -> None: ...
@@ -606,6 +605,7 @@ if sys.platform == "win32":
         startupinfo: subprocess.STARTUPINFO = ...,
         creationflags: int = ...,
     ) -> subprocess.CompletedProcess[bytes]: ...
+
 else:
     @overload
     async def open_process(

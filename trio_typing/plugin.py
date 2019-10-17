@@ -223,9 +223,7 @@ def decode_agen_types_from_return_type(
         return (
             yield_type,
             send_type,
-            make_simplified_union(
-                other_arms, ctx.context.line, ctx.context.column
-            ),
+            make_simplified_union(other_arms, ctx.context.line, ctx.context.column),
         )
 
 
