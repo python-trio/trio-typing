@@ -7,6 +7,7 @@ from typing import (
     Awaitable,
     Callable,
     ContextManager,
+    FrozenSet,
     Iterator,
     Mapping,
     NoReturn,
@@ -23,9 +24,9 @@ from typing import (
     IO,
     overload,
 )
-from trio_typing import Nursery, TaskStatus, takes_callable_and_args
+from trio_typing import TaskStatus, takes_callable_and_args
 from typing_extensions import Protocol, Literal
-from mypy_extensions import VarArg
+from mypy_extensions import NamedArg, VarArg
 import attr
 import signal
 import io
@@ -36,6 +37,7 @@ import ssl
 import sys
 import trio
 from . import hazmat as hazmat, socket as socket, abc as abc
+from . import to_thread as to_thread, from_thread as from_thread
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
@@ -105,6 +107,57 @@ class CancelScope:
     def __exit__(self, *exc: object) -> bool: ...
     def cancel(self) -> None: ...
 
+class Nursery(_NotConstructible, metaclass=ABCMeta):
+    cancel_scope: CancelScope
+    @property
+    def child_tasks(self) -> FrozenSet[trio.hazmat.Task]: ...
+    @property
+    def parent_task(self) -> trio.hazmat.Task: ...
+    @takes_callable_and_args
+    def start_soon(
+        self,
+        async_fn: Union[
+            # List these explicitly instead of Callable[..., Awaitable[None]]
+            # so that even without the plugin we catch cases of passing a
+            # function with keyword-only arguments to start_soon().
+            Callable[[], Awaitable[None]],
+            Callable[[Any], Awaitable[None]],
+            Callable[[Any, Any], Awaitable[None]],
+            Callable[[Any, Any, Any], Awaitable[None]],
+            Callable[[Any, Any, Any, Any], Awaitable[None]],
+            Callable[[VarArg()], Awaitable[None]],
+        ],
+        *args: Any,
+        name: object = None,
+    ) -> None: ...
+    @takes_callable_and_args
+    async def start(
+        self,
+        async_fn: Union[
+            # List these explicitly instead of Callable[..., Awaitable[None]]
+            # so that even without the plugin we can infer the return type
+            # of start(), and fail when a function is passed that doesn't
+            # accept task_status.
+            Callable[[NamedArg(TaskStatus[T], "task_status")], Awaitable[None]],
+            Callable[[Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]],
+            Callable[
+                [Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+            ],
+            Callable[
+                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+            ],
+            Callable[
+                [Any, Any, Any, Any, NamedArg(TaskStatus[T], "task_status")],
+                Awaitable[None],
+            ],
+            Callable[
+                [VarArg(), NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+            ],
+        ],
+        *args: Any,
+        name: object = None,
+    ) -> T: ...
+
 def open_nursery() -> AsyncContextManager[Nursery]: ...
 def current_effective_deadline() -> float: ...
 def current_time() -> float: ...
@@ -133,7 +186,6 @@ class TooSlowError(Exception):
 class Event:
     def is_set(self) -> bool: ...
     def set(self) -> None: ...
-    def clear(self) -> None: ...
     async def wait(self) -> None: ...
     def statistics(self) -> _Statistics: ...
 
@@ -190,29 +242,6 @@ class Condition:
     async def __aenter__(self) -> None: ...
     async def __aexit__(self, *exc: object) -> bool: ...
 
-# _threads
-class BlockingTrioPortal:
-    def __init__(self, trio_token: Optional[trio.hazmat.TrioToken] = None) -> None: ...
-    @takes_callable_and_args
-    def run(
-        self,
-        afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
-        *args: Any,
-    ) -> T: ...
-    @takes_callable_and_args
-    def run_sync(
-        self, fn: Union[Callable[..., T], Callable[[VarArg()], T]], *args: Any
-    ) -> T: ...
-
-def current_default_worker_thread_limiter() -> CapacityLimiter: ...
-@takes_callable_and_args
-async def run_sync_in_worker_thread(
-    sync_fn: Union[Callable[..., T], Callable[[VarArg()], T]],
-    *args: Any,
-    cancellable: bool = False,
-    limiter: Optional[CapacityLimiter] = None,
-) -> T: ...
-
 # _highlevel_generic
 async def aclose_forcefully(resource: trio.abc.AsyncResource) -> None: ...
 
@@ -225,18 +254,18 @@ class StapledStream(trio.abc.HalfCloseableStream):
     async def aclose(self) -> None: ...
     async def send_all(self, data: Union[bytes, memoryview]) -> None: ...
     async def wait_send_all_might_not_block(self) -> None: ...
-    async def receive_some(self, max_bytes: int) -> bytes: ...
+    async def receive_some(self, max_bytes: Optional[int] = ...) -> bytes: ...
     async def send_eof(self) -> None: ...
 
 # _channel
-class _MemorySendChannel(trio.abc.SendChannel[T_contra]):
+class MemorySendChannel(trio.abc.SendChannel[T_contra]):
     def send_nowait(self, value: T_contra) -> None: ...
     async def send(self, value: T_contra) -> None: ...
     def clone(self: T) -> T: ...
     async def aclose(self) -> None: ...
     def statistics(self) -> _Statistics: ...
 
-class _MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
+class MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
     def receive_nowait(self) -> T_co: ...
     async def receive(self) -> T_co: ...
     def clone(self: T) -> T: ...
@@ -244,10 +273,10 @@ class _MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
     def statistics(self) -> _Statistics: ...
 
 # written as a class so you can say open_memory_channel[int](5)
-class open_memory_channel(Tuple[_MemorySendChannel[T], _MemoryReceiveChannel[T]]):
-    def __new__(
+class open_memory_channel(Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]):
+    def __new__(  # type: ignore[misc]  # "must return a subtype"
         cls, max_buffer_size: float
-    ) -> Tuple[_MemorySendChannel[T], _MemoryReceiveChannel[T]]: ...
+    ) -> Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]: ...
     def __init__(self, max_buffer_size: float): ...
 
 # _signals
@@ -267,7 +296,7 @@ class SocketStream(trio.abc.HalfCloseableStream):
     async def aclose(self) -> None: ...
     async def send_all(self, data: Union[bytes, memoryview]) -> None: ...
     async def wait_send_all_might_not_block(self) -> None: ...
-    async def receive_some(self, max_bytes: int) -> bytes: ...
+    async def receive_some(self, max_bytes: Optional[int] = ...) -> bytes: ...
     async def send_eof(self) -> None: ...
 
 class SocketListener(trio.abc.Listener[SocketStream]):
@@ -344,7 +373,9 @@ def wrap_file(obj: Union[IO[Any], io.IOBase]) -> _AsyncIOBase: ...
 # _path
 class Path(pathlib.PurePath):
     @classmethod
-    def cwd(cls) -> Path: ...
+    async def cwd(cls) -> Path: ...
+    @classmethod
+    async def home(cls) -> Path: ...
     async def stat(self) -> os.stat_result: ...
     async def chmod(self, mode: int) -> None: ...
     async def exists(self) -> bool: ...
@@ -495,7 +526,7 @@ class SSLStream(trio.abc.Stream):
     async def aclose(self) -> None: ...
     async def send_all(self, data: Union[bytes, memoryview]) -> None: ...
     async def wait_send_all_might_not_block(self) -> None: ...
-    async def receive_some(self, max_bytes: int) -> bytes: ...
+    async def receive_some(self, max_bytes: Optional[int] = ...) -> bytes: ...
 
 class SSLListener(trio.abc.Listener[SSLStream]):
     transport_listener: trio.abc.Listener[trio.abc.Stream]
@@ -517,7 +548,7 @@ class _HasFileno(Protocol):
 
 _Redirect = Union[int, _HasFileno, None]
 
-class Process(trio.abc.AsyncResource):
+class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
     stdin: Optional[trio.abc.SendStream]
     stdout: Optional[trio.abc.ReceiveStream]
     stderr: Optional[trio.abc.ReceiveStream]
@@ -525,56 +556,6 @@ class Process(trio.abc.AsyncResource):
     args: Union[str, Sequence[str]]
     pid: int
 
-    if sys.platform == "win32":
-        def __init__(
-            self,
-            command: Union[str, Sequence[str]],
-            *,
-            stdin: _Redirect = ...,
-            stdout: _Redirect = ...,
-            stderr: _Redirect = ...,
-            close_fds: bool = ...,
-            shell: bool = ...,
-            cwd: str = ...,
-            env: Mapping[str, str] = ...,
-            startupinfo: subprocess.STARTUPINFO = ...,
-            creationflags: int = ...,
-        ): ...
-    else:
-        @overload
-        def __init__(
-            self,
-            command: str,
-            *,
-            stdin: _Redirect = ...,
-            stdout: _Redirect = ...,
-            stderr: _Redirect = ...,
-            preexec_fn: Optional[Callable[[], None]] = ...,
-            close_fds: bool = ...,
-            shell: Literal[True] = ...,
-            cwd: str = ...,
-            env: Mapping[str, str] = ...,
-            restore_signals: bool = ...,
-            start_new_session: bool = ...,
-            pass_fds: Sequence[int] = ...,
-        ): ...
-        @overload
-        def __init__(
-            self,
-            command: Sequence[str],
-            *,
-            stdin: _Redirect = ...,
-            stdout: _Redirect = ...,
-            stderr: _Redirect = ...,
-            preexec_fn: Optional[Callable[[], None]] = ...,
-            close_fds: bool = ...,
-            shell: bool = ...,
-            cwd: str = ...,
-            env: Mapping[str, str] = ...,
-            restore_signals: bool = ...,
-            start_new_session: bool = ...,
-            pass_fds: Sequence[int] = ...,
-        ): ...
     @property
     def returncode(self) -> Optional[int]: ...
     async def aclose(self) -> None: ...
@@ -583,3 +564,116 @@ class Process(trio.abc.AsyncResource):
     def send_signal(self, sig: signal.Signals) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
+
+# There's a lot of duplication here because mypy doesn't
+# have a good way to represent overloads that differ only
+# slightly. A cheat sheet:
+# - on Windows, command is Union[str, Sequence[str]];
+#   on Unix, command is str if shell=True and Sequence[str] otherwise
+# - on Windows, there are startupinfo and creationflags options;
+#   on Unix, there are preexec_fn, restore_signals, start_new_session, and pass_fds
+# - run_process() has the signature of open_process() plus arguments
+#   capture_stdout, capture_stderr, check, and the ability to pass
+#   bytes as stdin
+
+if sys.platform == "win32":
+    async def open_process(
+        command: Union[str, Sequence[str]],
+        *,
+        stdin: _Redirect = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: str = ...,
+        env: Mapping[str, str] = ...,
+        startupinfo: subprocess.STARTUPINFO = ...,
+        creationflags: int = ...,
+    ) -> Process: ...
+    async def run_process(
+        command: Union[str, Sequence[str]],
+        *,
+        stdin: Union[bytes, _Redirect] = ...,
+        capture_stdout: bool = ...,
+        capture_stderr: bool = ...,
+        check: bool = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: str = ...,
+        env: Mapping[str, str] = ...,
+        startupinfo: subprocess.STARTUPINFO = ...,
+        creationflags: int = ...,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+else:
+    @overload
+    async def open_process(
+        command: str,
+        *,
+        stdin: _Redirect = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: Literal[True],
+        cwd: str = ...,
+        env: Mapping[str, str] = ...,
+        preexec_fn: Optional[Callable[[], None]] = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Sequence[int] = ...,
+    ) -> Process: ...
+    @overload
+    async def open_process(
+        command: Sequence[str],
+        *,
+        stdin: _Redirect = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: str = ...,
+        env: Mapping[str, str] = ...,
+        preexec_fn: Optional[Callable[[], None]] = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Sequence[int] = ...,
+    ) -> Process: ...
+    @overload
+    async def run_process(
+        command: str,
+        *,
+        stdin: Union[bytes, _Redirect] = ...,
+        capture_stdout: bool = ...,
+        capture_stderr: bool = ...,
+        check: bool = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: Literal[True],
+        cwd: str = ...,
+        env: Mapping[str, str] = ...,
+        preexec_fn: Optional[Callable[[], None]] = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Sequence[int] = ...,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+    @overload
+    async def run_process(
+        command: Sequence[str],
+        *,
+        stdin: Union[bytes, _Redirect] = ...,
+        capture_stdout: bool = ...,
+        capture_stderr: bool = ...,
+        check: bool = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: str = ...,
+        env: Mapping[str, str] = ...,
+        preexec_fn: Optional[Callable[[], None]] = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Sequence[int] = ...,
+    ) -> subprocess.CompletedProcess[bytes]: ...

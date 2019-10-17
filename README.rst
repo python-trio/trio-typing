@@ -29,8 +29,9 @@ This repository provides:
     (``async_generator-stubs``)
 
 * A package ``trio_typing`` containing types that Trio programs often want
-  to refer to (``Nursery``, ``AsyncGenerator[Y, S]``, ``TaskStatus[T]``) and a mypy
+  to refer to (``AsyncGenerator[Y, S]`` and ``TaskStatus[T]``) and a mypy
   plugin that smooths over some limitations in the basic type hints.
+  (``Nursery`` is exported publicly by mainline Trio as of version 0.12.0.)
 
 
 Supported platforms
@@ -63,7 +64,7 @@ Enable the plugin in your ``mypy.ini`` (optional, but recommended)::
     plugins = trio_typing.plugin
 
 Start running mypy on your Trio code! You may want to import some typing
-names from ``trio_typing``, like ``Nursery`` and ``TaskStatus``; see below
+names from ``trio_typing``, like ``TaskStatus``; see below
 for more details.
 
 
@@ -78,14 +79,18 @@ and mypy will know to look in ``trio-stubs`` for the type information.
 
 The ``trio_typing`` package provides:
 
-* Names for two important types that Trio keeps anonymous: ``Nursery``
-  and ``TaskStatus[T]`` (where ``T`` is the type of the value
-  the task provides to be returned from ``nursery.start()``). These are
-  implemented as ABCs, and the actual private types inside Trio
-  (like ``trio._core._run.Nursery``) are registered as virtual subclasses
-  of them. So, you can't instantiate the ``trio_typing`` types, but
-  ``isinstance(nursery, trio_typing.Nursery)`` where ``nursery`` is a Trio
-  nursery object does return True.
+* ``TaskStatus[T]``, the type of the object passed as the ``task_status``
+  argument to a task started with ``nursery.start()``. The type parameter
+  ``T`` is the type of the value the task provides to be returned from
+  ``nursery.start()``. This is implemented as an ABC, and the actual
+  private types inside Trio are registered as virtual subclasses
+  of it. So, you can't instantiate ``trio_typing.TaskStatus``, but
+  ``isinstance(task_status, trio_typing.TaskStatus)`` where ``task_status``
+  is a Trio task status object does return True.
+
+* (Previous versions of ``trio_typing`` provided an analogous ABC for
+  ``Nursery``, but the actual class is available as ``trio.Nursery`` as of
+  Trio 0.12.0; you should use that instead.)
 
 * A backport of ``typing.AsyncGenerator[YieldT, SendT]`` to Python 3.5.
   (``YieldT`` is the type of values yielded by the generator, and
