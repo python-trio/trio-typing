@@ -57,9 +57,12 @@ else
     mkdir empty
     cd empty
 
+    # The data-driven tests import mypy.build, which imports
+    # distutils, which imports imp, which triggers a deprecation
+    # warning.
     if [ "$RUNTIME_ONLY" = "1" ]; then
-        pytest -W error -ra -v --pyargs trio_typing -k test_runtime
+        pytest -W error,ignore:::imp -ra -v --pyargs trio_typing -k test_runtime
     else
-        pytest -W error -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
+        pytest -W error,ignore:::imp -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
     fi
 fi
