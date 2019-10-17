@@ -165,7 +165,7 @@ def decode_agen_types_from_return_type(
     is inferred as ``NoReturn``.
     """
 
-    arms: Sequence[Type]
+    arms = []  # type: Sequence[Type]
     if isinstance(original_async_return_type, UnionType):
         arms = original_async_return_type.items
     else:
