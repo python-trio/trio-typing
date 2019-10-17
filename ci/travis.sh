@@ -2,8 +2,8 @@
 
 set -ex
 
-BLACK_VERSION=18.9b0
-MYPY_VERSION=0.660
+BLACK_VERSION=19.3b0
+MYPY_VERSION=0.740
 
 pip install -U pip setuptools wheel
 
@@ -57,9 +57,12 @@ else
     mkdir empty
     cd empty
 
+    # The data-driven tests import mypy.build, which imports
+    # distutils. On Travis this apparently imports imp and triggers
+    # a deprecation warning.
     if [ "$RUNTIME_ONLY" = "1" ]; then
-        pytest -W error -ra -v --pyargs trio_typing -k test_runtime
+        pytest -W error -W ignore:::distutils -ra -v --pyargs trio_typing -k test_runtime
     else
-        pytest -W error -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
+        pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
     fi
 fi

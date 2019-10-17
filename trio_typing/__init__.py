@@ -4,6 +4,7 @@ import typing as _t
 import typing_extensions as _tx
 import async_generator as _ag
 import trio as _trio
+from trio import Nursery
 from ._version import __version__
 
 __all__ = [
@@ -24,13 +25,6 @@ _T_contra = _t.TypeVar("_T_contra", contravariant=True)
 
 def takes_callable_and_args(fn):
     return fn
-
-
-class Nursery(metaclass=_abc.ABCMeta):
-    pass
-
-
-Nursery.register(_trio._core._run.Nursery)
 
 
 class TaskStatus(_t.Generic[_T], metaclass=_abc.ABCMeta):

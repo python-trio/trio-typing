@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, List, Optional, Tuple, cast
+from typing import Callable, List, Optional, Sequence, Tuple, cast
 from typing_extensions import Literal
 from typing import Type as typing_Type
 from mypy.plugin import Plugin, FunctionContext, MethodContext, CheckerPluginInterface
@@ -26,6 +26,7 @@ from mypy.types import (
     AnyType,
     TypeOfAny,
 )
+from mypy.typeops import make_simplified_union
 from mypy.checker import TypeChecker
 
 
@@ -118,7 +119,7 @@ def open_return_type(
                     api.named_generic_type("trio._AsyncBufferedIOBase", []),
                 ]  # type: List[Type]
                 return api.named_generic_type(
-                    "typing.Awaitable", [UnionType.make_simplified_union(options)]
+                    "typing.Awaitable", [make_simplified_union(options)]
                 )
             else:
                 # Buffering is default if not specified
@@ -164,6 +165,7 @@ def decode_agen_types_from_return_type(
     is inferred as ``NoReturn``.
     """
 
+    arms = []  # type: Sequence[Type]
     if isinstance(original_async_return_type, UnionType):
         arms = original_async_return_type.items
     else:
@@ -221,9 +223,7 @@ def decode_agen_types_from_return_type(
         return (
             yield_type,
             send_type,
-            UnionType.make_simplified_union(
-                other_arms, ctx.context.line, ctx.context.column
-            ),
+            make_simplified_union(other_arms, ctx.context.line, ctx.context.column),
         )
 
 
