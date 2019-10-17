@@ -2,8 +2,8 @@
 
 set -ex
 
-BLACK_VERSION=18.9b0
-MYPY_VERSION=0.660
+BLACK_VERSION=19.3b0
+MYPY_VERSION=0.740
 
 pip install -U pip setuptools wheel
 
