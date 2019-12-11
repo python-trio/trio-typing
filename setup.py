@@ -23,7 +23,7 @@ setup(
         "trio >= 0.12.1",
         # mypy can't be installed on PyPy due to its dependency
         # on typed-ast
-        "mypy == 0.740; implementation_name == 'cpython'",
+        "mypy >= 0.750; implementation_name == 'cpython'",
         "typing_extensions >= 3.7.4",
         "mypy_extensions >= 0.4.2",
     ],
