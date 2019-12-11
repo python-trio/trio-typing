@@ -457,9 +457,8 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
             raise ValueError("must be used as a decorator")
 
         fn_type = get_proper_type(ctx.arg_types[0][0])
-        if (
-            not isinstance(fn_type, CallableType)
-            or not isinstance(get_proper_type(ctx.default_return_type), CallableType)
+        if not isinstance(fn_type, CallableType) or not isinstance(
+            get_proper_type(ctx.default_return_type), CallableType
         ):
             raise ValueError("must be used as a decorator")
 
