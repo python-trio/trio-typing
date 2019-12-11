@@ -57,13 +57,13 @@ def aclosing(obj: _T_closeable) -> AsyncContextManager[_T_closeable]: ...
 _AsyncGenHooks = NamedTuple(
     "AsyncGenHooks",
     [
-        ("firstiter", Optional[Callable[[AsyncGenerator[Any, Any]], None]]),
-        ("finalizer", Optional[Callable[[AsyncGenerator[Any, Any]], None]]),
+        ("firstiter", Optional[Callable[[AsyncGenerator[Any, Any]], Any]]),
+        ("finalizer", Optional[Callable[[AsyncGenerator[Any, Any]], Any]]),
     ],
 )
 
 def get_asyncgen_hooks() -> _AsyncGenHooks: ...
 def set_asyncgen_hooks(
-    firstiter: Optional[Callable[[AsyncGenerator[Any, Any]], None]] = ...,
-    finalizer: Optional[Callable[[AsyncGenerator[Any, Any]], None]] = ...,
+    firstiter: Optional[Callable[[AsyncGenerator[Any, Any]], Any]] = ...,
+    finalizer: Optional[Callable[[AsyncGenerator[Any, Any]], Any]] = ...,
 ) -> None: ...
