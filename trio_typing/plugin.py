@@ -453,15 +453,16 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
 
     """
     try:
+        if not ctx.arg_types or len(ctx.arg_types[0]) != 1:
+            raise ValueError("must be used as a decorator")
+
+        fn_type = get_proper_type(ctx.arg_types[0][0])
         if (
-            not ctx.arg_types
-            or len(ctx.arg_types[0]) != 1
-            or not isinstance(get_proper_type(ctx.arg_types[0][0]), CallableType)
+            not isinstance(fn_type, CallableType)
             or not isinstance(get_proper_type(ctx.default_return_type), CallableType)
         ):
             raise ValueError("must be used as a decorator")
 
-        fn_type = get_proper_type(ctx.arg_types[0][0])  # type: CallableType
         callable_idx = -1  # index in function arguments of the callable
         callable_args_idx = -1  # index in callable arguments of the StarArgs
         callable_ty = None  # type: Optional[CallableType]
