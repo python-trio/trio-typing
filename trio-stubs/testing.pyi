@@ -48,8 +48,8 @@ async def check_half_closeable_stream(
     stream_maker: _StreamMaker, clogged_stream_maker: Optional[_StreamMaker]
 ) -> None: ...
 
-MemoryStreamHook = Optional[Callable[[], Awaitable[None]]]
-MemoryStreamSyncHook = Optional[Callable[[], None]]
+MemoryStreamHook = Optional[Callable[[], Awaitable[Any]]]
+MemoryStreamSyncHook = Optional[Callable[[], Any]]
 @attr.s(auto_attribs=True)
 class MemorySendStream(trio.abc.SendStream):
     send_all_hook: MemoryStreamHook = ...

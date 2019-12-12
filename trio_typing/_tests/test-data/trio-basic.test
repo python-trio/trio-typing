@@ -15,9 +15,9 @@ async def sleep_sort(values: Sequence[float]) -> List[float]:
         reveal_type(nursery.cancel_scope)  # N: Revealed type is 'trio.CancelScope'
         for value in values:
             nursery.start_soon(worker, value)
-            nursery.start_soon(worker)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[None]]"
-            nursery.start_soon(worker, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[None]]"
-            nursery.start_soon(worker, value, value)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[float, float], Awaitable[None]]"
+            nursery.start_soon(worker)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[Any]]"
+            nursery.start_soon(worker, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[Any]]"
+            nursery.start_soon(worker, value, value)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[float, float], Awaitable[Any]]"
 
     return result
 

@@ -16,12 +16,12 @@ async def child2(
 
 async def parent() -> None:
     async with trio.open_nursery() as nursery:
-        nursery.start_soon(child, 10)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[int], Awaitable[None]]"
-        nursery.start_soon(child2)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[None]]"
-        nursery.start_soon(child2, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[None]]"
+        nursery.start_soon(child, 10)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[int], Awaitable[Any]]"
+        nursery.start_soon(child2)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[Any]]"
+        nursery.start_soon(child2, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[Any]]"
         nursery.start_soon(child2, 50)
-        await nursery.start(child)  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[NamedArg(TaskStatus[<nothing>], 'task_status')], Awaitable[None]]"
-        await nursery.start(child, "hi")  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str, NamedArg(TaskStatus[int], 'task_status')], Awaitable[None]]"
+        await nursery.start(child)  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[NamedArg(TaskStatus[<nothing>], 'task_status')], Awaitable[Any]]"
+        await nursery.start(child, "hi")  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str, NamedArg(TaskStatus[int], 'task_status')], Awaitable[Any]]"
         result = await nursery.start(child, 10)
         result2 = await nursery.start(child2, 10)
         reveal_type(result)  # N: Revealed type is 'builtins.int*'
@@ -45,7 +45,7 @@ async def child2(
 
 async def parent() -> None:
     async with trio.open_nursery() as nursery:
-        nursery.start_soon(child, 10)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Union[Callable[[], Awaitable[None]], Callable[[Any], Awaitable[None]], Callable[[Any, Any], Awaitable[None]], Callable[[Any, Any, Any], Awaitable[None]], Callable[[Any, Any, Any, Any], Awaitable[None]], Callable[[VarArg(Any)], Awaitable[None]]]"
+        nursery.start_soon(child, 10)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Union[Callable[[], Awaitable[Any]], Callable[[Any], Awaitable[Any]], Callable[[Any, Any], Awaitable[Any]], Callable[[Any, Any, Any], Awaitable[Any]], Callable[[Any, Any, Any, Any], Awaitable[Any]], Callable[[VarArg(Any)], Awaitable[Any]]]"
         nursery.start_soon(child2)
         nursery.start_soon(child2, "hi")
         nursery.start_soon(child2, 50)

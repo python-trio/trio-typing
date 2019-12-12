@@ -117,15 +117,15 @@ class Nursery(_NotConstructible, metaclass=ABCMeta):
     def start_soon(
         self,
         async_fn: Union[
-            # List these explicitly instead of Callable[..., Awaitable[None]]
+            # List these explicitly instead of Callable[..., Awaitable[Any]]
             # so that even without the plugin we catch cases of passing a
             # function with keyword-only arguments to start_soon().
-            Callable[[], Awaitable[None]],
-            Callable[[Any], Awaitable[None]],
-            Callable[[Any, Any], Awaitable[None]],
-            Callable[[Any, Any, Any], Awaitable[None]],
-            Callable[[Any, Any, Any, Any], Awaitable[None]],
-            Callable[[VarArg()], Awaitable[None]],
+            Callable[[], Awaitable[Any]],
+            Callable[[Any], Awaitable[Any]],
+            Callable[[Any, Any], Awaitable[Any]],
+            Callable[[Any, Any, Any], Awaitable[Any]],
+            Callable[[Any, Any, Any, Any], Awaitable[Any]],
+            Callable[[VarArg()], Awaitable[Any]],
         ],
         *args: Any,
         name: object = None,
@@ -134,24 +134,24 @@ class Nursery(_NotConstructible, metaclass=ABCMeta):
     async def start(
         self,
         async_fn: Union[
-            # List these explicitly instead of Callable[..., Awaitable[None]]
+            # List these explicitly instead of Callable[..., Awaitable[Any]]
             # so that even without the plugin we can infer the return type
             # of start(), and fail when a function is passed that doesn't
             # accept task_status.
-            Callable[[NamedArg(TaskStatus[T], "task_status")], Awaitable[None]],
-            Callable[[Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]],
+            Callable[[NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]],
+            Callable[[Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]],
             Callable[
-                [Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+                [Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
             ],
             Callable[
-                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
             ],
             Callable[
                 [Any, Any, Any, Any, NamedArg(TaskStatus[T], "task_status")],
-                Awaitable[None],
+                Awaitable[Any],
             ],
             Callable[
-                [VarArg(), NamedArg(TaskStatus[T], "task_status")], Awaitable[None]
+                [VarArg(), NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
             ],
         ],
         *args: Any,
@@ -433,7 +433,7 @@ class Path(pathlib.PurePath):
 T_resource = TypeVar("T_resource", bound=trio.abc.AsyncResource)
 
 async def serve_listeners(
-    handler: Callable[[T_resource], Awaitable[None]],
+    handler: Callable[[T_resource], Awaitable[Any]],
     listeners: Sequence[trio.abc.Listener[T_resource]],
     *,
     handler_nursery: Optional[Nursery] = None,
@@ -450,7 +450,7 @@ async def open_tcp_listeners(
     port: int, *, host: Optional[AnyStr] = None, backlog: Optional[int] = None
 ) -> Sequence[SocketListener]: ...
 async def serve_tcp(
-    handler: Callable[[SocketStream], Awaitable[None]],
+    handler: Callable[[SocketStream], Awaitable[Any]],
     port: int,
     *,
     host: Optional[AnyStr] = None,
@@ -480,7 +480,7 @@ async def open_ssl_over_tcp_listeners(
     backlog: Optional[int] = None,
 ) -> Sequence[trio.SSLListener]: ...
 async def serve_ssl_over_tcp(
-    handler: Callable[[trio.SSLStream], Awaitable[None]],
+    handler: Callable[[trio.SSLStream], Awaitable[Any]],
     port: int,
     ssl_context: ssl.SSLContext,
     *,
@@ -618,7 +618,7 @@ else:
         shell: Literal[True],
         cwd: str = ...,
         env: Mapping[str, str] = ...,
-        preexec_fn: Optional[Callable[[], None]] = ...,
+        preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
         start_new_session: bool = ...,
         pass_fds: Sequence[int] = ...,
@@ -634,7 +634,7 @@ else:
         shell: bool = ...,
         cwd: str = ...,
         env: Mapping[str, str] = ...,
-        preexec_fn: Optional[Callable[[], None]] = ...,
+        preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
         start_new_session: bool = ...,
         pass_fds: Sequence[int] = ...,
@@ -653,7 +653,7 @@ else:
         shell: Literal[True],
         cwd: str = ...,
         env: Mapping[str, str] = ...,
-        preexec_fn: Optional[Callable[[], None]] = ...,
+        preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
         start_new_session: bool = ...,
         pass_fds: Sequence[int] = ...,
@@ -672,7 +672,7 @@ else:
         shell: bool = ...,
         cwd: str = ...,
         env: Mapping[str, str] = ...,
-        preexec_fn: Optional[Callable[[], None]] = ...,
+        preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
         start_new_session: bool = ...,
         pass_fds: Sequence[int] = ...,

@@ -39,7 +39,7 @@ class TrioToken:
     @takes_callable_and_args
     def run_sync_soon(
         self,
-        sync_fn: Union[Callable[..., None], Callable[[VarArg()], None]],
+        sync_fn: Union[Callable[..., Any], Callable[[VarArg()], Any]],
         *args: Any,
         idempotent: bool = False,
     ) -> None: ...
@@ -75,7 +75,7 @@ def reschedule(task: Task, next_send: outcome.Outcome[Any] = ...) -> None: ...
 @takes_callable_and_args
 def spawn_system_task(
     async_fn: Union[
-        Callable[..., Awaitable[None]], Callable[[VarArg()], Awaitable[None]]
+        Callable[..., Awaitable[Any]], Callable[[VarArg()], Awaitable[Any]]
     ],
     *args: Any,
     name: object = ...,
