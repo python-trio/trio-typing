@@ -117,7 +117,7 @@ async def wait_task_rescheduled(
     abort_func: Callable[[Callable[[], NoReturn]], Abort]
 ) -> Any: ...
 async def permanently_detach_coroutine_object(
-    final_outcome: outcome.Outcome[object]
+    final_outcome: outcome.Outcome[object],
 ) -> Any: ...
 async def temporarily_detach_coroutine_object(
     abort_func: Callable[[Callable[[], NoReturn]], Abort]

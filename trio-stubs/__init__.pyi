@@ -281,7 +281,7 @@ class open_memory_channel(Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]):
 
 # _signals
 def open_signal_receiver(
-    *signals: signal.Signals
+    *signals: signal.Signals,
 ) -> ContextManager[AsyncIterator[signal.Signals]]: ...
 
 # _highlevel_socket
