@@ -417,7 +417,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         @trio_typing.takes_callable_and_args
         def start_soon(
             self,
-            async_fn: Callable[[VarArg()], None],
+            async_fn: Callable[[VarArg()], Any],
             *args: Any,
         ) -> None: ...
 
@@ -431,20 +431,20 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
         @overload
         def start_soon(
             self,
-            async_fn: Callable[[], None],
+            async_fn: Callable[[], Any],
         ) -> None: ...
 
         @overload
         def start_soon(
             self,
-            async_fn: Callable[[T1], None],
+            async_fn: Callable[[T1], Any],
             __arg1: T1,
         ) -> None: ...
 
         @overload
         def start_soon(
             self,
-            async_fn: Callable[[T1, T2], None],
+            async_fn: Callable[[T1, T2], Any],
             __arg1: T1,
             __arg2: T2
         ) -> None: ...
