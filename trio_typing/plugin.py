@@ -25,6 +25,8 @@ from mypy.types import (
     UninhabitedType,
     AnyType,
     TypeOfAny,
+    get_proper_type,
+    get_proper_types,
 )
 from mypy.typeops import make_simplified_union
 from mypy.checker import TypeChecker
@@ -68,11 +70,10 @@ def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
     """
     # (adapted from the @contextmanager support in mypy's builtin plugin)
     if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = ctx.arg_types[0][0]
-        if isinstance(arg_type, CallableType) and isinstance(
-            ctx.default_return_type, CallableType
-        ):
-            return ctx.default_return_type.copy_modified(
+        arg_type = get_proper_type(ctx.arg_types[0][0])
+        ret_type = get_proper_type(ctx.default_return_type)
+        if isinstance(arg_type, CallableType) and isinstance(ret_type, CallableType):
+            return ret_type.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
                 arg_names=arg_type.arg_names,
@@ -166,32 +167,34 @@ def decode_agen_types_from_return_type(
     """
 
     arms = []  # type: Sequence[Type]
-    if isinstance(original_async_return_type, UnionType):
-        arms = original_async_return_type.items
+    resolved_async_return_type = get_proper_type(original_async_return_type)
+    if isinstance(resolved_async_return_type, UnionType):
+        arms = resolved_async_return_type.items
     else:
         arms = [original_async_return_type]
     yield_type = None  # type: Optional[Type]
     send_type = None  # type: Optional[Type]
     other_arms = []  # type: List[Type]
     try:
-        for arm in arms:
+        for orig_arm in arms:
+            arm = get_proper_type(orig_arm)
             if isinstance(arm, Instance):
-                if arm.type.fullname() == "trio_typing.YieldType":
+                if arm.type.fullname == "trio_typing.YieldType":
                     if len(arm.args) != 1:
                         raise ValueError("YieldType must take one argument")
                     if yield_type is not None:
                         raise ValueError("YieldType specified multiple times")
                     yield_type = arm.args[0]
-                elif arm.type.fullname() == "trio_typing.SendType":
+                elif arm.type.fullname == "trio_typing.SendType":
                     if len(arm.args) != 1:
                         raise ValueError("SendType must take one argument")
                     if send_type is not None:
                         raise ValueError("SendType specified multiple times")
                     send_type = arm.args[0]
                 else:
-                    other_arms.append(arm)
+                    other_arms.append(orig_arm)
             else:
-                other_arms.append(arm)
+                other_arms.append(orig_arm)
     except ValueError as ex:
         ctx.api.fail("invalid @async_generator return type: {}".format(ex), ctx.context)
         return (
@@ -248,19 +251,18 @@ def async_generator_callback(ctx: FunctionContext) -> Type:
     # Apply the common logic to not change the arguments of the
     # decorated function
     new_return_type = args_invariant_decorator_callback(ctx)
+    if not isinstance(new_return_type, CallableType):
+        return new_return_type
+    agen_return_type = get_proper_type(new_return_type.ret_type)
     if (
-        isinstance(new_return_type, CallableType)
-        and isinstance(new_return_type.ret_type, Instance)
-        and new_return_type.ret_type.type.fullname()
-        == ("trio_typing.CompatAsyncGenerator")
-        and len(new_return_type.ret_type.args) == 3
+        isinstance(agen_return_type, Instance)
+        and agen_return_type.type.fullname == "trio_typing.CompatAsyncGenerator"
+        and len(agen_return_type.args) == 3
     ):
         return new_return_type.copy_modified(
-            ret_type=new_return_type.ret_type.copy_modified(
+            ret_type=agen_return_type.copy_modified(
                 args=list(
-                    decode_agen_types_from_return_type(
-                        ctx, new_return_type.ret_type.args[2]
-                    )
+                    decode_agen_types_from_return_type(ctx, agen_return_type.args[2])
                 )
             )
         )
@@ -288,10 +290,14 @@ def decode_enclosing_agen_types(ctx: FunctionContext) -> Tuple[Type, Type]:
         )
         return AnyType(TypeOfAny.from_error), AnyType(TypeOfAny.from_error)
 
+    # The enclosing function type Callable[...] and its return type
+    # Coroutine[...]  were both produced by mypy, rather than typed by
+    # the user, so they can't be type aliases; thus there's no need to
+    # use get_proper_type() here.
     if (
         isinstance(enclosing_func.type, CallableType)
         and isinstance(enclosing_func.type.ret_type, Instance)
-        and enclosing_func.type.ret_type.type.fullname() == "typing.Coroutine"
+        and enclosing_func.type.ret_type.type.fullname == "typing.Coroutine"
         and len(enclosing_func.type.ret_type.args) == 3
     ):
         yield_type, send_type, _ = decode_agen_types_from_return_type(
@@ -334,7 +340,7 @@ def yield_callback(ctx: FunctionContext) -> Type:
 def yield_from_callback(ctx: FunctionContext) -> Type:
     """Provide a better typecheck for yield_from_()."""
     if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = ctx.arg_types[0][0]
+        arg_type = get_proper_type(ctx.arg_types[0][0])
     else:
         return ctx.default_return_type
 
@@ -345,7 +351,7 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
 
     if (
         isinstance(arg_type, Instance)
-        and arg_type.type.fullname()
+        and arg_type.type.fullname
         in (
             "trio_typing.CompatAsyncGenerator",
             "trio_typing.AsyncGenerator",
@@ -386,11 +392,12 @@ def started_callback(ctx: MethodContext) -> Type:
     """Raise an error if task_status.started() is called without an argument
     and the TaskStatus is not declared to accept a result of type None.
     """
+    self_type = get_proper_type(ctx.type)
     if (
         (not ctx.arg_types or not ctx.arg_types[0])
-        and isinstance(ctx.type, Instance)
-        and ctx.type.args
-        and not isinstance(ctx.type.args[0], NoneTyp)
+        and isinstance(self_type, Instance)
+        and self_type.args
+        and not isinstance(get_proper_type(self_type.args[0]), NoneTyp)
     ):
         ctx.api.fail(
             "TaskStatus.started() requires an argument for types other than "
@@ -446,21 +453,22 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
 
     """
     try:
-        if (
-            not ctx.arg_types
-            or len(ctx.arg_types[0]) != 1
-            or not isinstance(ctx.arg_types[0][0], CallableType)
-            or not isinstance(ctx.default_return_type, CallableType)
+        if not ctx.arg_types or len(ctx.arg_types[0]) != 1:
+            raise ValueError("must be used as a decorator")
+
+        fn_type = get_proper_type(ctx.arg_types[0][0])
+        if not isinstance(fn_type, CallableType) or not isinstance(
+            get_proper_type(ctx.default_return_type), CallableType
         ):
             raise ValueError("must be used as a decorator")
 
-        fn_type = ctx.arg_types[0][0]  # type: CallableType
         callable_idx = -1  # index in function arguments of the callable
         callable_args_idx = -1  # index in callable arguments of the StarArgs
         callable_ty = None  # type: Optional[CallableType]
         args_idx = -1  # index in function arguments of the StarArgs
 
         for idx, (kind, ty) in enumerate(zip(fn_type.arg_kinds, fn_type.arg_types)):
+            ty = get_proper_type(ty)
             if isinstance(ty, AnyType) and kind == ARG_STAR:
                 assert args_idx == -1
                 args_idx = idx
@@ -469,7 +477,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                 # into Callable[[VarArg()], T]
                 # (the union makes it not fail when the plugin is not being used)
                 if isinstance(ty, UnionType):
-                    for arm in ty.items:
+                    for arm in get_proper_types(ty.items):
                         if (
                             isinstance(arm, CallableType)
                             and not arm.is_ellipsis_args
@@ -481,6 +489,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                         continue
 
                 for idx_, (kind_, ty_) in enumerate(zip(ty.arg_kinds, ty.arg_types)):
+                    ty_ = get_proper_type(ty_)
                     if isinstance(ty_, AnyType) and kind_ == ARG_STAR:
                         if callable_idx != -1:
                             raise ValueError(
