@@ -99,7 +99,6 @@ def start_guest_run(
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
 ) -> None: ...
 
-
 # kqueue only
 def current_kqueue() -> select.kqueue: ...
 def monitor_kevent(
