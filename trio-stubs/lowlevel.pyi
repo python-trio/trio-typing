@@ -62,6 +62,7 @@ class Task:
     context: contextvars.Context
     custom_sleep_data: Any
     parent_nursery: Optional[Nursery]
+    eventual_parent_nursery: Optional[Nursery]
     child_nurseries: Sequence[Nursery]
 
 async def checkpoint() -> None: ...
@@ -85,6 +86,19 @@ def remove_instrument(instrument: trio.abc.Instrument) -> None: ...
 async def wait_readable(fd: int) -> None: ...
 async def wait_writable(fd: int) -> None: ...
 def notify_closing(fd: int) -> None: ...
+@takes_callable_and_args
+def start_guest_run(
+    afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
+    *args: Any,
+    run_sync_soon_threadsafe: Callable[[Callable[[], None]], None],
+    done_callback: Callable[[outcome.Outcome[T]], None],
+    run_sync_soon_not_threadsafe: Callable[[Callable[[], None]], None] = ...,
+    host_uses_signal_set_wakeup_fd: bool = ...,
+    clock: trio.abc.Clock = ...,
+    instruments: Sequence[trio.abc.Instrument] = ...,
+    restrict_keyboard_interrupt_to_checkpoints: bool = ...,
+) -> None: ...
+
 
 # kqueue only
 def current_kqueue() -> select.kqueue: ...
@@ -144,6 +158,11 @@ class RunVar(Generic[T]):
     def get(self, default: T = ...) -> T: ...
     def set(self, value: T) -> _RunVarToken: ...
     def reset(self, token: _RunVarToken) -> None: ...
+
+# _core._thread_cache
+def start_thread_soon(
+    fn: Callable[[], T], deliver: Callable[[outcome.Outcome[T]], None]
+) -> None: ...
 
 # _unix_pipes
 class FdStream(trio.abc.Stream):

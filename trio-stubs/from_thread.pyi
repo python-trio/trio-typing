@@ -8,11 +8,11 @@ T = TypeVar("T")
 def run(
     afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
     *args: Any,
-    trio_token: Optional[trio.hazmat.TrioToken] = ...,
+    trio_token: Optional[trio.lowlevel.TrioToken] = ...,
 ) -> T: ...
 @takes_callable_and_args
 def run_sync(
     fn: Union[Callable[..., T], Callable[[VarArg()], T]],
     *args: Any,
-    trio_token: Optional[trio.hazmat.TrioToken] = ...,
+    trio_token: Optional[trio.lowlevel.TrioToken] = ...,
 ) -> T: ...
