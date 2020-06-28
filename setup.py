@@ -20,10 +20,10 @@ setup(
     packages=["async_generator-stubs", "outcome-stubs", "trio-stubs", "trio_typing"],
     include_package_data=True,
     install_requires=[
-        "trio >= 0.12.1",
+        "trio >= 0.16.0",
         # mypy can't be installed on PyPy due to its dependency
         # on typed-ast
-        "mypy >= 0.750; implementation_name == 'cpython'",
+        "mypy >= 0.780; implementation_name == 'cpython'",
         "typing_extensions >= 3.7.4",
         "mypy_extensions >= 0.4.2",
     ],

@@ -36,7 +36,7 @@ import subprocess
 import ssl
 import sys
 import trio
-from . import hazmat as hazmat, socket as socket, abc as abc
+from . import lowlevel as lowlevel, socket as socket, abc as abc
 from . import to_thread as to_thread, from_thread as from_thread
 
 T = TypeVar("T")
@@ -110,9 +110,9 @@ class CancelScope:
 class Nursery(_NotConstructible, metaclass=ABCMeta):
     cancel_scope: CancelScope
     @property
-    def child_tasks(self) -> FrozenSet[trio.hazmat.Task]: ...
+    def child_tasks(self) -> FrozenSet[trio.lowlevel.Task]: ...
     @property
-    def parent_task(self) -> trio.hazmat.Task: ...
+    def parent_task(self) -> trio.lowlevel.Task: ...
     @takes_callable_and_args
     def start_soon(
         self,
@@ -572,7 +572,7 @@ class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
 # - on Windows, there are startupinfo and creationflags options;
 #   on Unix, there are preexec_fn, restore_signals, start_new_session, and pass_fds
 # - run_process() has the signature of open_process() plus arguments
-#   capture_stdout, capture_stderr, check, and the ability to pass
+#   capture_stdout, capture_stderr, check, deliver_cancel, and the ability to pass
 #   bytes as stdin
 
 if sys.platform == "win32":
@@ -596,6 +596,7 @@ if sys.platform == "win32":
         capture_stdout: bool = ...,
         capture_stderr: bool = ...,
         check: bool = ...,
+        deliver_cancel: Callable[[Process], Awaitable[None]] = ...,
         stdout: _Redirect = ...,
         stderr: _Redirect = ...,
         close_fds: bool = ...,
@@ -647,6 +648,7 @@ else:
         capture_stdout: bool = ...,
         capture_stderr: bool = ...,
         check: bool = ...,
+        deliver_cancel: Callable[[Process], Awaitable[None]] = ...,
         stdout: _Redirect = ...,
         stderr: _Redirect = ...,
         close_fds: bool = ...,
@@ -666,6 +668,7 @@ else:
         capture_stdout: bool = ...,
         capture_stderr: bool = ...,
         check: bool = ...,
+        deliver_cancel: Callable[[Process], Awaitable[None]] = ...,
         stdout: _Redirect = ...,
         stderr: _Redirect = ...,
         close_fds: bool = ...,
