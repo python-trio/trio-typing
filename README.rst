@@ -37,17 +37,14 @@ This repository provides:
 Supported platforms
 ~~~~~~~~~~~~~~~~~~~
 
-To **type-check** code that uses ``trio-typing``, you need CPython 3.5.2
-or later.  (Mypy requires 3.5.2+, and its dependency ``typed-ast``
-doesn't support PyPy.)  We test on Linux using the latest releases
-from the 3.5, 3.6, and 3.7 branches, as well as 3.8-dev nightly. We're
+Like Trio, we require Python 3.6 or later. Both PyPy and CPython are
+supported at runtime, but type checking must occur on CPython (due to
+limitations of mypy).  We test on Linux using the latest releases
+from the 3.6, 3.7, and 3.8 branches, as well as 3.9-dev nightly. We're
 not knowingly doing anything OS-specific, so other OSes should work
 too.
 
-You can **run** code that uses ``trio-typing`` on any platform
-supported by Trio, includng PyPy and CPython 3.5.0 and 3.5.1.
-
-Type checkers other than Mypy are not supported, but might work.
+Type checkers other than mypy are not supported, but might work.
 Experience reports and patches to add support are welcome.
 
 
