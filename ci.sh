@@ -57,12 +57,5 @@ else
     mkdir empty
     cd empty
 
-    # The data-driven tests import mypy.build, which imports
-    # distutils. On Travis this apparently imports imp and triggers
-    # a deprecation warning.
-    if [ "$RUNTIME_ONLY" = "1" ]; then
-        pytest -W error -W ignore:::distutils -ra -v --pyargs trio_typing -k test_runtime
-    else
-        pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
-    fi
+    pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
 fi
