@@ -52,7 +52,6 @@ if [ "$CHECK_DOCS" = "1" ]; then
     sphinx-build -nW  -b html source build
 else
     # Actual tests
-    pip install mypy==${MYPY_VERSION}
     pip install -Ur test-requirements.txt
 
     mkdir empty
