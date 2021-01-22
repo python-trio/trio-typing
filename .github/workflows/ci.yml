@@ -44,5 +44,6 @@ jobs:
           PYPY_NIGHTLY_BRANCH: '${{ matrix.pypy_nightly_branch }}'
           CHECK_FORMATTING: '${{ matrix.check_formatting }}'
           CHECK_TYPING: '${{ matrix.check_typing }}'
+          RUNTIME_ONLY: "${{ startsWith(matrix.python, 'pypy') }}"
           # Should match 'name:' up above
           JOB_NAME: 'Ubuntu (${{ matrix.python }}${{ matrix.extra_name }})'

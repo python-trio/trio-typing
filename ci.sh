@@ -58,5 +58,11 @@ else
     mkdir empty
     cd empty
 
-    pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
+    # The data-driven tests import mypy.build and PyPy can't install Mypy due
+    # to its dependence on typed-ast which doesn't build for PyPy.
+    if [ "$RUNTIME_ONLY" = "1" ]; then
+        pytest -W error -W ignore:::distutils -ra -v --pyargs trio_typing -k test_runtime
+    else
+        pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
+    fi
 fi
