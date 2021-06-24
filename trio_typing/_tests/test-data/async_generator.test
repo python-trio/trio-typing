@@ -69,6 +69,12 @@ async def test_aclosing(thing: trio.abc.AsyncResource) -> None:
     async with agen.aclosing(thing) as result:
         reveal_type(result)  # N: Revealed type is 'trio.abc.AsyncResource*'
 
+    async def agen() -> AsyncGenerator[int, None]:
+        yield 0
+
+    async with agen.aclosing(g) as result:
+        reveal_type(result)  # N: Revealed type is 'AsyncGenerator[int, None]'
+
 [case testAsyncCM]
 import trio
 from typing import Union
