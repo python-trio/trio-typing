@@ -21,12 +21,14 @@ setup(
     include_package_data=True,
     install_requires=[
         "trio >= 0.16.0",
-        # mypy can't be installed on PyPy due to its dependency
-        # on typed-ast
-        "mypy >= 0.780; implementation_name == 'cpython'",
         "typing_extensions >= 3.7.4",
         "mypy_extensions >= 0.4.2",
     ],
+    extras_require={
+        'mypy': [  # can't be installed on PyPy due to its dependency on typed-ast
+            "mypy >= 0.780",
+        ],
+    },
     keywords=["async", "trio", "mypy"],
     classifiers=[
         "License :: OSI Approved :: MIT License",

@@ -29,9 +29,10 @@ This repository provides:
     (``async_generator-stubs``)
 
 * A package ``trio_typing`` containing types that Trio programs often want
-  to refer to (``AsyncGenerator[Y, S]`` and ``TaskStatus[T]``) and a mypy
-  plugin that smooths over some limitations in the basic type hints.
+  to refer to (``AsyncGenerator[Y, S]`` and ``TaskStatus[T]``)
   (``Nursery`` is exported publicly by mainline Trio as of version 0.12.0.)
+
+* A mypy plugin that smooths over some limitations in the basic type hints.
 
 
 Supported platforms
@@ -51,18 +52,35 @@ Experience reports and patches to add support are welcome.
 Quickstart
 ~~~~~~~~~~
 
+runtime only
+------------
+
 Install with::
 
-    pip install -U trio-typing
+    pip install trio-typing
 
-Enable the plugin in your ``mypy.ini`` (optional, but recommended)::
+Then import some typing names from ``trio_typing``, like ``TaskStatus``;
+see below for more details.
+
+
+with mypy support
+-----------------
+
+Install trio-typing with mypy extras::
+
+    pip install trio-typing[mypy]
+
+Enable the plugin in your ``mypy.ini``::
 
     [mypy]
     plugins = trio_typing.plugin
 
-Start running mypy on your Trio code! You may want to import some typing
-names from ``trio_typing``, like ``TaskStatus``; see below
-for more details.
+Start running mypy on your Trio code!
+
+NOTE: ``trio-typing`` is the correct dependency to list in the requirements
+  of your own library using the ``trio_typing`` module.  Don't use
+  ``trio-typing[mypy]``, since that would needlessly add a mypy dependency to
+  every app having a transitive dependency on your library.
 
 
 What's in the box?
