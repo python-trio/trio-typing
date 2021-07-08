@@ -11,8 +11,8 @@ async def sleep_sort(values: Sequence[float]) -> List[float]:
         result.append(value)
 
     async with trio.open_nursery() as nursery:
-        reveal_type(nursery)  # N: Revealed type is 'trio.Nursery*'
-        reveal_type(nursery.cancel_scope)  # N: Revealed type is 'trio.CancelScope'
+        reveal_type(nursery)  # N: Revealed type is "trio.Nursery*"
+        reveal_type(nursery.cancel_scope)  # N: Revealed type is "trio.CancelScope"
         for value in values:
             nursery.start_soon(worker, value)
             nursery.start_soon(worker)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[float], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[Any]]"
@@ -22,10 +22,10 @@ async def sleep_sort(values: Sequence[float]) -> List[float]:
     return result
 
 val = trio.run(sleep_sort, (1, 3, 5, 2, 4), clock=trio.testing.MockClock(autojump_threshold=0))
-reveal_type(val)  # N: Revealed type is 'builtins.list*[builtins.float]'
+reveal_type(val)  # N: Revealed type is "builtins.list*[builtins.float]"
 trio.run(sleep_sort, ["hi", "there"])  # E: Argument 1 to "run" has incompatible type "Callable[[Sequence[float]], Coroutine[Any, Any, List[float]]]"; expected "Callable[[List[str]], Awaitable[List[float]]]"
 
-reveal_type(trio.Event().statistics().anything)  # N: Revealed type is 'Any'
+reveal_type(trio.Event().statistics().anything)  # N: Revealed type is "Any"
 
 [case testTrioBasic_NoPlugin]
 import trio
@@ -40,8 +40,8 @@ async def sleep_sort(values: Sequence[float]) -> List[float]:
         result.append(value)
 
     async with trio.open_nursery() as nursery:
-        reveal_type(nursery)  # N: Revealed type is 'trio.Nursery*'
-        reveal_type(nursery.cancel_scope)  # N: Revealed type is 'trio.CancelScope'
+        reveal_type(nursery)  # N: Revealed type is "trio.Nursery*"
+        reveal_type(nursery.cancel_scope)  # N: Revealed type is "trio.CancelScope"
         for value in values:
             nursery.start_soon(worker, value)
             nursery.start_soon(worker)
@@ -51,15 +51,15 @@ async def sleep_sort(values: Sequence[float]) -> List[float]:
     return result
 
 val = trio.run(sleep_sort, (1, 3, 5, 2, 4), clock=trio.testing.MockClock(autojump_threshold=0))
-reveal_type(val)  # N: Revealed type is 'builtins.list*[builtins.float]'
+reveal_type(val)  # N: Revealed type is "builtins.list*[builtins.float]"
 trio.run(sleep_sort, ["hi", "there"])
 
-reveal_type(trio.Event().statistics().anything)  # N: Revealed type is 'Any'
+reveal_type(trio.Event().statistics().anything)  # N: Revealed type is "Any"
 
 [case testExceptions]
 import trio
 
-raise trio.Cancelled()  # E: Cannot instantiate abstract class 'Cancelled' with abstract attribute '_objects_of_this_type_are_not_directly_constructible'
+raise trio.Cancelled()  # E: Cannot instantiate abstract class "Cancelled" with abstract attribute "_objects_of_this_type_are_not_directly_constructible"
 
 try:
     trio.run(trio.sleep, 3)
@@ -77,7 +77,7 @@ with trio.MultiError.catch(filter_exc):
 try:
     trio.run(trio.sleep, 3)
 except trio.MultiError as ex:
-    reveal_type(ex.exceptions[0])  # N: Revealed type is 'builtins.BaseException*'
+    reveal_type(ex.exceptions[0])  # N: Revealed type is "builtins.BaseException*"
 
 [case testOverloaded]
 from typing import overload, Any
@@ -90,16 +90,16 @@ async def fn(arg: Any) -> Any:
     return arg
 
 import trio
-reveal_type(trio.run(fn, 3))  # N: Revealed type is 'builtins.str*'
-reveal_type(trio.run(fn, 3.4))  # N: Revealed type is 'builtins.bytes*'
+reveal_type(trio.run(fn, 3))  # N: Revealed type is "builtins.str*"
+reveal_type(trio.run(fn, 3.4))  # N: Revealed type is "builtins.bytes*"
 trio.run(fn)  # E: Argument 1 to "run" has incompatible type overloaded function; expected "Callable[[], Awaitable[str]]"
 
 [case testChannels]
 from typing import Tuple
 import trio
 send, receive = trio.open_memory_channel[Tuple[int, str]](5)
-reveal_type(send)  # N: Revealed type is 'trio.MemorySendChannel[Tuple[builtins.int, builtins.str]]'
-reveal_type(receive)  # N: Revealed type is 'trio.MemoryReceiveChannel[Tuple[builtins.int, builtins.str]]'
+reveal_type(send)  # N: Revealed type is "trio.MemorySendChannel[Tuple[builtins.int, builtins.str]]"
+reveal_type(receive)  # N: Revealed type is "trio.MemoryReceiveChannel[Tuple[builtins.int, builtins.str]]"
 async def test() -> None:
     await send.send((5, "hi"))
-    reveal_type(receive.receive_nowait()[1])  # N: Revealed type is 'builtins.str'
+    reveal_type(receive.receive_nowait()[1])  # N: Revealed type is "builtins.str"
