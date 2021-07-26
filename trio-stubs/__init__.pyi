@@ -456,7 +456,7 @@ async def serve_tcp(
     host: Optional[AnyStr] = None,
     backlog: Optional[int] = None,
     handler_nursery: Optional[Nursery] = None,
-    task_status: TaskStatus[Sequence[SocketListener]],
+    task_status: TaskStatus[Sequence[SocketListener]] = ...,
 ) -> NoReturn: ...
 
 # _highlevel_open_unix_stream
