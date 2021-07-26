@@ -488,7 +488,7 @@ async def serve_ssl_over_tcp(
     https_compatible: bool = False,
     backlog: Optional[int] = None,
     handler_nursery: Optional[Nursery] = None,
-    task_status: TaskStatus[Sequence[trio.SSLListener]],
+    task_status: TaskStatus[Sequence[trio.SSLListener]] = ...,
 ) -> NoReturn: ...
 
 # _ssl
