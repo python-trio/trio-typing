@@ -103,3 +103,10 @@ reveal_type(receive)  # N: Revealed type is "trio.MemoryReceiveChannel[Tuple[bui
 async def test() -> None:
     await send.send((5, "hi"))
     reveal_type(receive.receive_nowait()[1])  # N: Revealed type is "builtins.str"
+
+[case testSubprocessPaths]
+import trio
+from pathlib import Path
+async def test() -> None:
+    await trio.run_process(["cat", Path("/dev/null"), b"/dev/null"])
+    await trio.run_process("cat /dev/null", shell=True)
