@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  Ubuntu:
+    name: 'Ubuntu (${{ matrix.python }}${{ matrix.extra_name }})'
+    timeout-minutes: 10
+    runs-on: 'ubuntu-latest'
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+        check_format: ['0']
+        check_typing: ['0']
+        runtime_only: ['0']
+        extra_name: ['']
+        include:
+          - python: '3.9'
+            check_format: '1'
+            extra_name: ', check formatting'
+          - python: '3.9'
+            check_typing: '1'
+            extra_name: ', type check'
+          - python: 'pypy-3.8'
+            runtime_only: '1'
+            extra_name: ', runtime only'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ fromJSON(format('["{0}", "{1}"]', format('{0}.0-alpha - {0}.X', matrix.python), matrix.python))[startsWith(matrix.python, 'pypy')] }}
+      - name: Run tests
+        run: ./ci.sh
+        env:
+          CHECK_FORMATTING: '${{ matrix.check_formatting }}'
+          CHECK_TYPING: '${{ matrix.check_typing }}'
+          RUNTIME_ONLY: '${{ matrix.runtime_only }}'
+          # Should match 'name:' up above
+          JOB_NAME: 'Ubuntu (${{ matrix.python }}${{ matrix.extra_name }})'
