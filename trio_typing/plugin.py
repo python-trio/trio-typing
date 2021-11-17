@@ -19,7 +19,6 @@ from mypy.types import (
     NoneTyp,
     Overloaded,
     TypeVarDef,
-    TypeVarLikeDef,
     TypeVarType,
     Instance,
     UnionType,
@@ -510,7 +509,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
             )
 
         expanded_fns = []  # type: List[CallableType]
-        type_var_defs = []  # type: List[TypeVarLikeDef]
+        type_var_defs = []  # type: List[TypeVarDef]
         type_var_types = []  # type: List[Type]
         for arg_idx in range(1, 7):  # provides overloads for 0 through 5 arguments
             arg_types = list(fn_type.arg_types)
