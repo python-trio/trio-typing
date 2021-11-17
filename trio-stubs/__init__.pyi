@@ -12,7 +12,6 @@ from typing import (
     Mapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
     Sequence,
     TypeVar,
@@ -24,10 +23,10 @@ from typing import (
     IO,
     overload,
 )
+from _typeshed import StrOrBytesPath
 from trio_typing import TaskStatus, takes_callable_and_args
 from typing_extensions import Protocol, Literal
 from mypy_extensions import NamedArg, VarArg
-import attr
 import signal
 import io
 import os
@@ -581,7 +580,7 @@ class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
 
 if sys.platform == "win32":
     async def open_process(
-        command: Union[str, Sequence[str]],
+        command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
         *,
         stdin: _Redirect = ...,
         stdout: _Redirect = ...,
@@ -594,7 +593,7 @@ if sys.platform == "win32":
         creationflags: int = ...,
     ) -> Process: ...
     async def run_process(
-        command: Union[str, Sequence[str]],
+        command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
         *,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
@@ -614,7 +613,7 @@ if sys.platform == "win32":
 else:
     @overload
     async def open_process(
-        command: str,
+        command: StrOrBytesPath,
         *,
         stdin: _Redirect = ...,
         stdout: _Redirect = ...,
@@ -630,7 +629,7 @@ else:
     ) -> Process: ...
     @overload
     async def open_process(
-        command: Sequence[str],
+        command: Sequence[StrOrBytesPath],
         *,
         stdin: _Redirect = ...,
         stdout: _Redirect = ...,
@@ -646,7 +645,7 @@ else:
     ) -> Process: ...
     @overload
     async def run_process(
-        command: str,
+        command: StrOrBytesPath,
         *,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
@@ -666,7 +665,7 @@ else:
     ) -> subprocess.CompletedProcess[bytes]: ...
     @overload
     async def run_process(
-        command: Sequence[str],
+        command: Sequence[StrOrBytesPath],
         *,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
