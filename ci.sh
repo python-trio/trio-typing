@@ -56,5 +56,6 @@ cd empty
 if [ "$RUNTIME_ONLY" = "1" ]; then
     pytest -W error -W ignore:::distutils -ra -v --pyargs trio_typing -k test_runtime
 else
+    pip install mypy==${MYPY_VERSION}
     pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
 fi

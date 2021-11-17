@@ -20,13 +20,13 @@ jobs:
           - '3.8'
           - '3.9'
           - '3.10'
-        check_format: ['0']
+        check_formatting: ['0']
         check_typing: ['0']
         runtime_only: ['0']
         extra_name: ['']
         include:
           - python: '3.9'
-            check_format: '1'
+            check_formatting: '1'
             extra_name: ', check formatting'
           - python: '3.9'
             check_typing: '1'
