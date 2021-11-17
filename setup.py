@@ -25,7 +25,7 @@ setup(
         "mypy_extensions >= 0.4.2",
     ],
     extras_require={
-        'mypy': [  # can't be installed on PyPy due to its dependency on typed-ast
+        "mypy": [  # can't be installed on PyPy due to its dependency on typed-ast
             "mypy >= 0.780",
         ],
     },
