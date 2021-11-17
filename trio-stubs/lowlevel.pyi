@@ -22,6 +22,7 @@ import outcome
 import contextvars
 import enum
 import select
+import sys
 
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
@@ -114,7 +115,6 @@ if sys.platform == "win32":
     class _CompletionKeyEventInfo:
         lpOverlapped: int
         dwNumberOfBytesTransferred: int
-
     def current_iocp() -> int: ...
     def register_with_iocp(handle: int) -> None: ...
     async def wait_overlapped(handle: int, lpOverlapped: int) -> None: ...

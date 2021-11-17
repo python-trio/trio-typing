@@ -23,6 +23,7 @@ from typing import (
     IO,
     overload,
 )
+
 # TODO: change this to 'import StrOrBytesPath' once mypy release picks up
 # https://github.com/python/typeshed/commit/f0bf6eebbde0f779666f17e258fceb78dbb7f9d5
 from _typeshed import AnyPath as StrOrBytesPath

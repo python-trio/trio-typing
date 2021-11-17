@@ -73,10 +73,18 @@ class CompatAsyncGenerator(
 ):
     def __anext__(self) -> Awaitable[T_co]: ...
     def asend(self, value: T_contra) -> Awaitable[T_co]: ...
+    @overload
     def athrow(
         self,
         exc_type: Type[BaseException],
-        exc_value: Optional[BaseException] = ...,
+        exc_value: Union[BaseException, object] = ...,
+        exc_traceback: Optional[TracebackType] = ...,
+    ) -> Awaitable[T_co]: ...
+    @overload
+    def athrow(
+        self,
+        exc_type: BaseException,
+        exc_value: None = ...,
         exc_traceback: Optional[TracebackType] = ...,
     ) -> Awaitable[T_co]: ...
     def aclose(self) -> Awaitable[None]: ...
