@@ -1,9 +1,9 @@
 #!/bin/bash
 
-set -ex
+set -ex -o pipefail
 
 BLACK_VERSION=19.10b0
-MYPY_VERSION=0.750
+MYPY_VERSION=0.910
 
 pip install -U pip setuptools wheel
 
@@ -44,25 +44,18 @@ fi
 python setup.py sdist --formats=zip
 pip install dist/*.zip
 
-if [ "$CHECK_DOCS" = "1" ]; then
-    pip install -Ur ci/rtd-requirements.txt
-    cd docs
-    # -n (nit-picky): warn on missing references
-    # -W: turn warnings into errors
-    sphinx-build -nW  -b html source build
+# Actual tests
+pip install -Ur test-requirements.txt
+
+mkdir empty
+cd empty
+
+# The data-driven tests import mypy.build, which imports
+# distutils. On Travis this apparently imports imp and triggers
+# a deprecation warning.
+if [ "$RUNTIME_ONLY" = "1" ]; then
+    pytest -W error -W ignore:::distutils -ra -v --pyargs trio_typing -k test_runtime
 else
-    # Actual tests
-    pip install -Ur test-requirements.txt
-
-    mkdir empty
-    cd empty
-
-    # The data-driven tests import mypy.build, which imports
-    # distutils. On Travis this apparently imports imp and triggers
-    # a deprecation warning.
-    if [ "$RUNTIME_ONLY" = "1" ]; then
-        pytest -W error -W ignore:::distutils -ra -v --pyargs trio_typing -k test_runtime
-    else
-        pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
-    fi
+    pip install mypy==${MYPY_VERSION}
+    pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
 fi

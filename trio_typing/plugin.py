@@ -19,6 +19,7 @@ from mypy.types import (
     NoneTyp,
     Overloaded,
     TypeVarDef,
+    TypeVarLikeDef,
     TypeVarType,
     Instance,
     UnionType,
@@ -529,7 +530,10 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                     + ([None] * len(type_var_types))
                     + callable_ty.arg_names[callable_args_idx + 1 :]
                 ),
-                variables=(callable_ty.variables + type_var_defs),
+                variables=(
+                    list(callable_ty.variables)
+                    + cast(List[TypeVarLikeDef], type_var_defs)
+                ),
             )
             expanded_fns.append(
                 fn_type.copy_modified(
@@ -548,7 +552,10 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                         + ([None] * len(type_var_types))
                         + fn_type.arg_names[args_idx + 1 :]
                     ),
-                    variables=(fn_type.variables + type_var_defs),
+                    variables=(
+                        list(fn_type.variables)
+                        + cast(List[TypeVarLikeDef], type_var_defs)
+                    ),
                 )
             )
             type_var_defs.append(
