@@ -450,7 +450,11 @@ async def serve_listeners(
 
 # _highlevel_open_tcp_stream
 async def open_tcp_stream(
-    host: AnyStr, port: int, *, happy_eyeballs_delay: float = ...
+    host: Union[str, bytes],
+    port: int,
+    *,
+    happy_eyeballs_delay: float = ...,
+    local_address: Union[str, bytes, None] = ...,
 ) -> SocketStream: ...
 
 # _highlevel_open_tcp_listeners
