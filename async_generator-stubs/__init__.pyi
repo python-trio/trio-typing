@@ -48,14 +48,14 @@ def asynccontextmanager(
 ) -> Callable[..., AsyncContextManager[_T]]: ...
 
 class _AsyncCloseable(Protocol):
-    async def aclose(self) -> None: ...
+    def aclose(self) -> Awaitable[None]: ...
 
 _T_closeable = TypeVar("_T_closeable", bound=_AsyncCloseable)
 
 def aclosing(obj: _T_closeable) -> AsyncContextManager[_T_closeable]: ...
 
 _AsyncGenHooks = NamedTuple(
-    "AsyncGenHooks",
+    "_AsyncGenHooks",
     [
         ("firstiter", Optional[Callable[[AsyncGenerator[Any, Any]], Any]]),
         ("finalizer", Optional[Callable[[AsyncGenerator[Any, Any]], Any]]),

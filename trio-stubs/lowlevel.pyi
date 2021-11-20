@@ -22,6 +22,7 @@ import outcome
 import contextvars
 import enum
 import select
+import sys
 
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
@@ -100,25 +101,26 @@ def start_guest_run(
 ) -> None: ...
 
 # kqueue only
-def current_kqueue() -> select.kqueue: ...
-def monitor_kevent(
-    ident: int, filter: int
-) -> ContextManager[UnboundedQueue[select.kevent]]: ...
-async def wait_kevent(
-    ident: int, filter: int, abort_func: Callable[[Callable[[], NoReturn]], Abort]
-) -> select.kevent: ...
+if sys.platform == "darwin" or sys.platform.startswith("freebsd"):
+    def current_kqueue() -> select.kqueue: ...
+    def monitor_kevent(
+        ident: int, filter: int
+    ) -> ContextManager[UnboundedQueue[select.kevent]]: ...
+    async def wait_kevent(
+        ident: int, filter: int, abort_func: Callable[[Callable[[], NoReturn]], Abort]
+    ) -> select.kevent: ...
 
 # windows only
-class _CompletionKeyEventInfo:
-    lpOverlapped: int
-    dwNumberOfBytesTransferred: int
-
-def current_iocp() -> int: ...
-def register_with_iocp(handle: int) -> None: ...
-async def wait_overlapped(handle: int, lpOverlapped: int) -> None: ...
-def monitor_completion_key() -> ContextManager[
-    Tuple[int, UnboundedQueue[_CompletionKeyEventInfo]]
-]: ...
+if sys.platform == "win32":
+    class _CompletionKeyEventInfo:
+        lpOverlapped: int
+        dwNumberOfBytesTransferred: int
+    def current_iocp() -> int: ...
+    def register_with_iocp(handle: int) -> None: ...
+    async def wait_overlapped(handle: int, lpOverlapped: int) -> None: ...
+    def monitor_completion_key() -> ContextManager[
+        Tuple[int, UnboundedQueue[_CompletionKeyEventInfo]]
+    ]: ...
 
 # _core._traps
 class Abort(enum.Enum):

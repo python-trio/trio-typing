@@ -26,10 +26,10 @@ async def calc_lengths_async() -> Union[SendType[str], YieldType[int]]:
         next_yield = len(await yield_(next_yield))
 
 async def test() -> None:
-    reveal_type(await outcome.acapture(some_async_fn, 3, b"test"))  # N: Revealed type is 'Union[outcome.Value[builtins.str*], outcome.Error]'
+    reveal_type(await outcome.acapture(some_async_fn, 3, b"test"))  # N: Revealed type is "Union[outcome.Value[builtins.str*], outcome.Error]"
     test_outcome = outcome.capture(some_fn, 10, b"hi")
-    reveal_type(test_outcome)  # N: Revealed type is 'Union[outcome.Value[builtins.str*], outcome.Error]'
-    reveal_type(test_outcome.unwrap())  # N: Revealed type is 'builtins.str*'
+    reveal_type(test_outcome)  # N: Revealed type is "Union[outcome.Value[builtins.str*], outcome.Error]"
+    reveal_type(test_outcome.unwrap())  # N: Revealed type is "builtins.str*"
     test_outcome.send(wrong_type_gen())  # E: Argument 1 to "send" of "Value" has incompatible type "Iterator[int]"; expected "Generator[<nothing>, str, Any]"  # E: Argument 1 to "send" of "Error" has incompatible type "Iterator[int]"; expected "Generator[<nothing>, Any, Any]"
-    reveal_type(test_outcome.send(calc_lengths()))  # N: Revealed type is 'builtins.int*'
-    reveal_type(await test_outcome.asend(calc_lengths_async()))  # N: Revealed type is 'builtins.int*'
+    reveal_type(test_outcome.send(calc_lengths()))  # N: Revealed type is "builtins.int*"
+    reveal_type(await test_outcome.asend(calc_lengths_async()))  # N: Revealed type is "builtins.int*"

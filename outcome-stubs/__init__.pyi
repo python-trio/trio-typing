@@ -21,13 +21,13 @@ T_contra = TypeVar("T_contra", contravariant=True)
 # Can't use AsyncGenerator as it creates a dependency cycle
 # (outcome stubs -> trio_typing stubs -> trio.hazmat stubs -> outcome)
 class _ASendable(Protocol[T_contra, T_co]):
-    async def asend(self, value: T_contra) -> T_co: ...
-    async def athrow(
+    def asend(self, value: T_contra) -> Awaitable[T_co]: ...
+    def athrow(
         self,
         exc_type: Type[BaseException],
         exc_value: Optional[BaseException] = ...,
         exc_traceback: Optional[TracebackType] = ...,
-    ) -> T_co: ...
+    ) -> Awaitable[T_co]: ...
 
 class Value(Generic[T]):
     value: T

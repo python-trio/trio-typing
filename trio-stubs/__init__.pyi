@@ -12,7 +12,6 @@ from typing import (
     Mapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
     Sequence,
     TypeVar,
@@ -24,10 +23,13 @@ from typing import (
     IO,
     overload,
 )
+
+# TODO: change this to 'import StrOrBytesPath' once mypy release picks up
+# https://github.com/python/typeshed/commit/f0bf6eebbde0f779666f17e258fceb78dbb7f9d5
+from _typeshed import AnyPath as StrOrBytesPath
 from trio_typing import TaskStatus, takes_callable_and_args
 from typing_extensions import Protocol, Literal
 from mypy_extensions import NamedArg, VarArg
-import attr
 import signal
 import io
 import os
@@ -264,6 +266,9 @@ class MemorySendChannel(trio.abc.SendChannel[T_contra]):
     def clone(self: T) -> T: ...
     async def aclose(self) -> None: ...
     def statistics(self) -> _Statistics: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> MemorySendChannel[T_contra]: ...
+    def __exit__(self, *exc: object) -> None: ...
 
 class MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
     def receive_nowait(self) -> T_co: ...
@@ -271,6 +276,9 @@ class MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
     def clone(self: T) -> T: ...
     async def aclose(self) -> None: ...
     def statistics(self) -> _Statistics: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> MemoryReceiveChannel[T_co]: ...
+    def __exit__(self, *exc: object) -> None: ...
 
 # written as a class so you can say open_memory_channel[int](5)
 class open_memory_channel(Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]):
@@ -511,7 +519,6 @@ class SSLStream(trio.abc.Stream):
         server_hostname: Optional[str] = None,
         server_side: bool = False,
         https_compatible: bool = False,
-        max_refill_bytes: int = ...,
     ) -> None: ...
     def getpeercert(self, binary_form: bool = ...) -> ssl._PeerCertRetType: ...
     def selected_npn_protocol(self) -> Optional[str]: ...
@@ -536,7 +543,6 @@ class SSLListener(trio.abc.Listener[SSLStream]):
         ssl_context: ssl.SSLContext,
         *,
         https_compatible: bool = False,
-        max_refill_bytes: int = ...,
     ) -> None: ...
     async def accept(self) -> SSLStream: ...
     async def aclose(self) -> None: ...
@@ -577,20 +583,20 @@ class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
 
 if sys.platform == "win32":
     async def open_process(
-        command: Union[str, Sequence[str]],
+        command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
         *,
         stdin: _Redirect = ...,
         stdout: _Redirect = ...,
         stderr: _Redirect = ...,
         close_fds: bool = ...,
         shell: bool = ...,
-        cwd: str = ...,
+        cwd: StrOrBytesPath = ...,
         env: Mapping[str, str] = ...,
         startupinfo: subprocess.STARTUPINFO = ...,
         creationflags: int = ...,
     ) -> Process: ...
     async def run_process(
-        command: Union[str, Sequence[str]],
+        command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
         *,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
@@ -601,7 +607,7 @@ if sys.platform == "win32":
         stderr: _Redirect = ...,
         close_fds: bool = ...,
         shell: bool = ...,
-        cwd: str = ...,
+        cwd: StrOrBytesPath = ...,
         env: Mapping[str, str] = ...,
         startupinfo: subprocess.STARTUPINFO = ...,
         creationflags: int = ...,
@@ -610,14 +616,14 @@ if sys.platform == "win32":
 else:
     @overload
     async def open_process(
-        command: str,
+        command: StrOrBytesPath,
         *,
         stdin: _Redirect = ...,
         stdout: _Redirect = ...,
         stderr: _Redirect = ...,
         close_fds: bool = ...,
         shell: Literal[True],
-        cwd: str = ...,
+        cwd: StrOrBytesPath = ...,
         env: Mapping[str, str] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
@@ -626,14 +632,14 @@ else:
     ) -> Process: ...
     @overload
     async def open_process(
-        command: Sequence[str],
+        command: Sequence[StrOrBytesPath],
         *,
         stdin: _Redirect = ...,
         stdout: _Redirect = ...,
         stderr: _Redirect = ...,
         close_fds: bool = ...,
         shell: bool = ...,
-        cwd: str = ...,
+        cwd: StrOrBytesPath = ...,
         env: Mapping[str, str] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
@@ -642,7 +648,7 @@ else:
     ) -> Process: ...
     @overload
     async def run_process(
-        command: str,
+        command: StrOrBytesPath,
         *,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
@@ -653,7 +659,7 @@ else:
         stderr: _Redirect = ...,
         close_fds: bool = ...,
         shell: Literal[True],
-        cwd: str = ...,
+        cwd: StrOrBytesPath = ...,
         env: Mapping[str, str] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
@@ -662,7 +668,7 @@ else:
     ) -> subprocess.CompletedProcess[bytes]: ...
     @overload
     async def run_process(
-        command: Sequence[str],
+        command: Sequence[StrOrBytesPath],
         *,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
@@ -673,7 +679,7 @@ else:
         stderr: _Redirect = ...,
         close_fds: bool = ...,
         shell: bool = ...,
-        cwd: str = ...,
+        cwd: StrOrBytesPath = ...,
         env: Mapping[str, str] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         restore_signals: bool = ...,
