@@ -8,6 +8,7 @@ from typing import (
     Callable,
     ContextManager,
     FrozenSet,
+    Generic,
     Iterator,
     Mapping,
     NoReturn,
@@ -429,7 +430,6 @@ async def open_file(
     closefd: bool = ...,
     opener: Optional[_Opener] = ...,
 ) -> _AsyncAnyIO: ...
-
 @overload
 def wrap_file(obj: Union[TextIO, io.TextIOBase]) -> _AsyncTextIOBase: ...
 @overload
@@ -463,7 +463,6 @@ class Path(pathlib.PurePath):
     async def mkdir(
         self, mode: int = ..., parents: bool = ..., exist_ok: bool = ...
     ) -> None: ...
-
     @overload
     async def open(
         self,
@@ -509,7 +508,6 @@ class Path(pathlib.PurePath):
         errors: Optional[str] = ...,
         newline: Optional[str] = ...,
     ) -> _AsyncAnyIO: ...
-
     async def owner(self) -> str: ...
     async def rename(self, target: Union[str, pathlib.PurePath]) -> None: ...
     async def replace(self, target: Union[str, pathlib.PurePath]) -> None: ...
