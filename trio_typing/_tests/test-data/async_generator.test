@@ -53,6 +53,7 @@ async def test() -> None:
 [case testAsyncGeneratorUtils]
 import async_generator as agen
 import trio
+from typing import AsyncGenerator
 
 @agen.async_generator
 async def dummy():
@@ -68,6 +69,12 @@ if firstiter is not None:
 async def test_aclosing(thing: trio.abc.AsyncResource) -> None:
     async with agen.aclosing(thing) as result:
         reveal_type(result)  # N: Revealed type is "trio.abc.AsyncResource*"
+
+    async def ag() -> AsyncGenerator[int, None]:
+        yield 0
+
+    async with agen.aclosing(ag()) as result2:
+        reveal_type(result2)  # N: Revealed type is "typing.AsyncGenerator*[builtins.int, None]"
 
 [case testAsyncCM]
 import trio
