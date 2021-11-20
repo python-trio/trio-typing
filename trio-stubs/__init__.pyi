@@ -27,6 +27,7 @@ from typing import (
 # TODO: change this to 'import StrOrBytesPath' once mypy release picks up
 # https://github.com/python/typeshed/commit/f0bf6eebbde0f779666f17e258fceb78dbb7f9d5
 from _typeshed import AnyPath as StrOrBytesPath
+from _typeshed import OpenBinaryMode, OpenTextMode
 from trio_typing import TaskStatus, takes_callable_and_args
 from typing_extensions import Protocol, Literal
 from mypy_extensions import NamedArg, VarArg
@@ -314,31 +315,31 @@ class SocketListener(trio.abc.Listener[SocketStream]):
     async def aclose(self) -> None: ...
 
 # _file_io
-class _AsyncIOBase(trio.abc.AsyncResource):
+class _AsyncIOBase(trio.abc.AsyncResource, Generic[T]):
     closed: bool
-    def __aiter__(self) -> AsyncIterator[bytes]: ...
-    async def __anext__(self) -> bytes: ...
+    def __aiter__(self) -> AsyncIterator[T]: ...
+    async def __anext__(self) -> T: ...
     async def aclose(self) -> None: ...
     def fileno(self) -> int: ...
     async def flush(self) -> None: ...
     def isatty(self) -> bool: ...
     def readable(self) -> bool: ...
-    async def readlines(self, hint: int = ...) -> List[bytes]: ...
+    async def readlines(self, hint: int = ...) -> List[T]: ...
     async def seek(self, offset: int, whence: int = ...) -> int: ...
     def seekable(self) -> bool: ...
     async def tell(self) -> int: ...
     async def truncate(self, size: Optional[int] = ...) -> int: ...
     def writable(self) -> bool: ...
-    async def writelines(self, lines: Iterable[bytes]) -> None: ...
-    async def readline(self, size: int = ...) -> bytes: ...
+    async def writelines(self, lines: Iterable[T]) -> None: ...
+    async def readline(self, size: int = ...) -> T: ...
 
-class _AsyncRawIOBase(_AsyncIOBase):
+class _AsyncRawIOBase(_AsyncIOBase[bytes]):
     async def readall(self) -> bytes: ...
     async def readinto(self, b: bytearray) -> Optional[int]: ...
     async def write(self, b: bytes) -> Optional[int]: ...
     async def read(self, size: int = ...) -> Optional[bytes]: ...
 
-class _AsyncBufferedIOBase(_AsyncIOBase):
+class _AsyncBufferedIOBase(_AsyncIOBase[bytes]):
     async def detach(self) -> _AsyncRawIOBase: ...
     async def readinto(self, b: bytearray) -> int: ...
     async def write(self, b: bytes) -> int: ...
@@ -346,29 +347,89 @@ class _AsyncBufferedIOBase(_AsyncIOBase):
     async def read(self, size: Optional[int] = ...) -> bytes: ...
     async def read1(self, size: int = ...) -> bytes: ...
 
-class _AsyncTextIOBase(_AsyncIOBase):
+class _AsyncTextIOBase(_AsyncIOBase[str]):
     encoding: str
     errors: Optional[str]
     newlines: Union[str, Tuple[str, ...], None]
-    def __aiter__(self) -> AsyncIterator[str]: ...  # type: ignore
-    async def __anext__(self) -> str: ...  # type: ignore
     async def detach(self) -> _AsyncRawIOBase: ...
     async def write(self, s: str) -> int: ...
-    async def readline(self, size: int = ...) -> str: ...  # type: ignore
     async def read(self, size: Optional[int] = ...) -> str: ...
-    async def seek(self, offset: int, whence: int = ...) -> int: ...
-    async def tell(self) -> int: ...
 
+# Usewd as a fallback if we can't deduce the mode
+class _AsyncAnyIO(_AsyncIOBase[Any]):
+    async def read(self, size: Optional[int] = ...) -> Any: ...
+    async def write(self, b: Union[str, bytes]) -> int: ...
+
+# open_file() overloads cribbed from typeshed builtins.open, with
+# some simplifications:
+_OpenFile = Union[StrOrBytesPath, int]
+_Opener = Callable[[str, int], int]
+
+# Text mode
+@overload
 async def open_file(
-    file: Union[str, bytes, int],
-    mode: str = ...,
+    file: _OpenFile,
+    mode: OpenTextMode = ...,
     buffering: int = ...,
     encoding: Optional[str] = ...,
     errors: Optional[str] = ...,
     newline: Optional[str] = ...,
     closefd: bool = ...,
-    opener: Optional[Callable[[Union[int, str], str], int]] = ...,
-) -> _AsyncIOBase: ...
+    opener: Optional[_Opener] = ...,
+) -> _AsyncTextIOBase: ...
+
+# Unbuffered binary mode
+@overload
+async def open_file(
+    file: _OpenFile,
+    mode: OpenBinaryMode,
+    buffering: Literal[0],
+    encoding: None = ...,
+    errors: None = ...,
+    newline: None = ...,
+    closefd: bool = ...,
+    opener: Optional[_Opener] = ...,
+) -> _AsyncRawIOBase: ...
+
+# Buffered binary mode
+@overload
+async def open_file(
+    file: _OpenFile,
+    mode: OpenBinaryMode,
+    buffering: Literal[-1, 1] = ...,
+    encoding: None = ...,
+    errors: None = ...,
+    newline: None = ...,
+    closefd: bool = ...,
+    opener: Optional[_Opener] = ...,
+) -> _AsyncBufferedIOBase: ...
+
+# Assume buffered if buffering cannot be determined
+@overload
+async def open_file(
+    file: _OpenFile,
+    mode: OpenBinaryMode,
+    buffering: int,
+    encoding: None = ...,
+    errors: None = ...,
+    newline: None = ...,
+    closefd: bool = ...,
+    opener: Optional[_Opener] = ...,
+) -> _AsyncBufferedIOBase: ...
+
+# Fallback if mode is not specified
+@overload
+async def open_file(
+    file: _OpenFile,
+    mode: str,
+    buffering: int = ...,
+    encoding: Optional[str] = ...,
+    errors: Optional[str] = ...,
+    newline: Optional[str] = ...,
+    closefd: bool = ...,
+    opener: Optional[_Opener] = ...,
+) -> _AsyncAnyIO: ...
+
 @overload
 def wrap_file(obj: Union[TextIO, io.TextIOBase]) -> _AsyncTextIOBase: ...
 @overload
@@ -376,7 +437,7 @@ def wrap_file(obj: Union[BinaryIO, io.BufferedIOBase]) -> _AsyncBufferedIOBase: 
 @overload
 def wrap_file(obj: io.RawIOBase) -> _AsyncRawIOBase: ...
 @overload
-def wrap_file(obj: Union[IO[Any], io.IOBase]) -> _AsyncIOBase: ...
+def wrap_file(obj: Union[IO[Any], io.IOBase]) -> _AsyncAnyIO: ...
 
 # _path
 class Path(pathlib.PurePath):
@@ -402,14 +463,53 @@ class Path(pathlib.PurePath):
     async def mkdir(
         self, mode: int = ..., parents: bool = ..., exist_ok: bool = ...
     ) -> None: ...
+
+    @overload
     async def open(
         self,
-        mode: str = ...,
+        mode: OpenTextMode = ...,
         buffering: int = ...,
         encoding: Optional[str] = ...,
         errors: Optional[str] = ...,
         newline: Optional[str] = ...,
-    ) -> _AsyncIOBase: ...
+    ) -> _AsyncTextIOBase: ...
+    @overload
+    async def open(
+        self,
+        mode: OpenBinaryMode,
+        buffering: Literal[0],
+        encoding: None = ...,
+        errors: None = ...,
+        newline: None = ...,
+    ) -> _AsyncRawIOBase: ...
+    @overload
+    async def open(
+        self,
+        mode: OpenBinaryMode,
+        buffering: Literal[-1, 1] = ...,
+        encoding: None = ...,
+        errors: None = ...,
+        newline: None = ...,
+    ) -> _AsyncBufferedIOBase: ...
+    @overload
+    async def open(
+        self,
+        mode: OpenBinaryMode,
+        buffering: int,
+        encoding: None = ...,
+        errors: None = ...,
+        newline: None = ...,
+    ) -> _AsyncBufferedIOBase: ...
+    @overload
+    async def open(
+        self,
+        mode: str,
+        buffering: int = ...,
+        encoding: Optional[str] = ...,
+        errors: Optional[str] = ...,
+        newline: Optional[str] = ...,
+    ) -> _AsyncAnyIO: ...
+
     async def owner(self) -> str: ...
     async def rename(self, target: Union[str, pathlib.PurePath]) -> None: ...
     async def replace(self, target: Union[str, pathlib.PurePath]) -> None: ...
