@@ -42,8 +42,6 @@ class TrioPlugin(Plugin):
             "async_generator.asynccontextmanager",
         ):
             return args_invariant_decorator_callback
-        if fullname == "trio.open_file":
-            return open_file_callback
         if fullname == "trio_typing.takes_callable_and_args":
             return takes_callable_and_args_callback
         if fullname == "async_generator.async_generator":
@@ -59,8 +57,6 @@ class TrioPlugin(Plugin):
     ) -> Optional[Callable[[MethodContext], Type]]:
         if fullname == "trio_typing.TaskStatus.started":
             return started_callback
-        if fullname == "trio.Path.open":
-            return open_method_callback
         return None
 
 
@@ -82,67 +78,6 @@ def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
                 is_ellipsis_args=arg_type.is_ellipsis_args,
             )
     return ctx.default_return_type
-
-
-def open_return_type(
-    api: CheckerPluginInterface, args: List[List[Expression]]
-) -> Optional[Type]:
-    def return_type(word: Literal["Text", "Buffered", "Raw"]) -> Type:
-        return api.named_generic_type(
-            "typing.Awaitable",
-            [api.named_generic_type("trio._Async{}IOBase".format(word), [])],
-        )
-
-    if len(args) < 2 or len(args[1]) == 0:
-        # If mode is unspecified, the default is text
-        return return_type("Text")
-
-    if len(args[1]) == 1:
-        # Mode was specified
-        mode_arg = args[1][0]
-        if isinstance(mode_arg, StrExpr):
-            # Mode is a string constant
-            if "b" not in mode_arg.value:
-                # If there's no "b" in it, it's a text mode
-                return return_type("Text")
-            # Otherwise it's binary -- determine whether buffered or not
-            if len(args) >= 3 and len(args[2]) == 1:
-                # Buffering was specified
-                buffering_arg = args[2][0]
-                if isinstance(buffering_arg, IntExpr):
-                    # Buffering is a constant -- zero means
-                    # unbuffered, otherwise buffered
-                    if buffering_arg.value == 0:
-                        return return_type("Raw")
-                    return return_type("Buffered")
-                # Not a constant, so we're not sure which it is.
-                options = [
-                    api.named_generic_type("trio._AsyncRawIOBase", []),
-                    api.named_generic_type("trio._AsyncBufferedIOBase", []),
-                ]  # type: List[Type]
-                return api.named_generic_type(
-                    "typing.Awaitable", [make_simplified_union(options)]
-                )
-            else:
-                # Buffering is default if not specified
-                return return_type("Buffered")
-
-    # Mode wasn't a constant or we couldn't make sense of it
-    return None
-
-
-def open_file_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for trio.open_file()."""
-    return open_return_type(ctx.api, ctx.args) or ctx.default_return_type
-
-
-def open_method_callback(ctx: MethodContext) -> Type:
-    """Infer a better return type for trio.Path.open()."""
-
-    # Path.open() doesn't take the first (filename) argument of open_file(),
-    # so we need to shift by one.
-    args_with_path = cast(List[List[Expression]], [[]]) + ctx.args
-    return open_return_type(ctx.api, args_with_path) or ctx.default_return_type
 
 
 def decode_agen_types_from_return_type(
