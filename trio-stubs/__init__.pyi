@@ -25,9 +25,7 @@ from typing import (
     overload,
 )
 
-# TODO: change this to 'import StrOrBytesPath' once mypy release picks up
-# https://github.com/python/typeshed/commit/f0bf6eebbde0f779666f17e258fceb78dbb7f9d5
-from _typeshed import AnyPath as StrOrBytesPath
+from _typeshed import StrOrBytesPath
 from _typeshed import OpenBinaryMode, OpenTextMode, ReadableBuffer, WriteableBuffer
 from trio_typing import TaskStatus, takes_callable_and_args
 from typing_extensions import Protocol, Literal

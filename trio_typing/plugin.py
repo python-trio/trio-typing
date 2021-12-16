@@ -18,8 +18,7 @@ from mypy.types import (
     CallableType,
     NoneTyp,
     Overloaded,
-    TypeVarDef,
-    TypeVarLikeDef,
+    TypeVarLikeType,
     TypeVarType,
     Instance,
     UnionType,
@@ -445,14 +444,13 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
             )
 
         expanded_fns = []  # type: List[CallableType]
-        type_var_defs = []  # type: List[TypeVarDef]
-        type_var_types = []  # type: List[Type]
+        type_var_types = []  # type: List[TypeVarType]
         for arg_idx in range(1, 7):  # provides overloads for 0 through 5 arguments
             arg_types = list(fn_type.arg_types)
             arg_types[callable_idx] = callable_ty.copy_modified(
                 arg_types=(
                     callable_ty.arg_types[:callable_args_idx]
-                    + type_var_types
+                    + cast(List[Type], type_var_types)
                     + callable_ty.arg_types[callable_args_idx + 1 :]
                 ),
                 arg_kinds=(
@@ -467,14 +465,14 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                 ),
                 variables=(
                     list(callable_ty.variables)
-                    + cast(List[TypeVarLikeDef], type_var_defs)
+                    + cast(List[TypeVarLikeType], type_var_types)
                 ),
             )
             expanded_fns.append(
                 fn_type.copy_modified(
                     arg_types=(
                         arg_types[:args_idx]
-                        + type_var_types
+                        + cast(List[Type], type_var_types)
                         + arg_types[args_idx + 1 :]
                     ),
                     arg_kinds=(
@@ -489,21 +487,20 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                     ),
                     variables=(
                         list(fn_type.variables)
-                        + cast(List[TypeVarLikeDef], type_var_defs)
+                        + cast(List[TypeVarLikeType], type_var_types)
                     ),
                 )
             )
-            type_var_defs.append(
-                TypeVarDef(
+            type_var_types.append(
+                TypeVarType(
                     "__T{}".format(arg_idx),
                     "__T{}".format(arg_idx),
                     -len(fn_type.variables) - arg_idx - 1,
                     [],
                     ctx.api.named_generic_type("builtins.object", []),
+                    line=ctx.context.line,
+                    column=ctx.context.column,
                 )
-            )
-            type_var_types.append(
-                TypeVarType(type_var_defs[-1], ctx.context.line, ctx.context.column)
             )
         return Overloaded(expanded_fns)
 
