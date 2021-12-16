@@ -26,7 +26,7 @@ setup(
     ],
     extras_require={
         "mypy": [  # can't be installed on PyPy due to its dependency on typed-ast
-            "mypy >= 0.780",
+            "mypy >= 0.920",
         ],
     },
     keywords=["async", "trio", "mypy"],
