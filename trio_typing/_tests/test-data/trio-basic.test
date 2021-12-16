@@ -111,3 +111,9 @@ async def test() -> None:
     await trio.run_process(["cat", Path("/dev/null"), b"/dev/null"])
     await trio.run_process(["cat", Path("/dev/null")], cwd=Path("/"))
     await trio.run_process("cat /dev/null", shell=True)
+
+[case testOptionalCwd]
+import trio
+async def test(_cwd=None) -> None:
+    await trio.run_process(["cat", "dev/null"], cwd="/")
+    await trio.run_process(["cat", "/dev/null"], cwd=_cwd)
