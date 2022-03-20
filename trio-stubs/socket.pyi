@@ -336,6 +336,8 @@ from socket import (
     CAN_BCM_RX_CHANGED as CAN_BCM_RX_CHANGED,
     AF_LINK as AF_LINK,
     CAN_RAW_FD_FRAMES as CAN_RAW_FD_FRAMES,
+    AddressFamily,
+    SocketKind,
 )
 
 if sys.version_info >= (3, 6):
@@ -387,7 +389,7 @@ async def getaddrinfo(
     type: int = ...,
     proto: int = ...,
     flags: int = ...,
-) -> List[Tuple[int, int, int, str, Tuple[Any, ...]]]: ...
+) -> List[Tuple[AddressFamily, SocketKind, int, str, Tuple[Any, ...]]]: ...
 
 class SocketType:
     family: int
