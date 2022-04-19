@@ -4,6 +4,7 @@ from trio_typing import takes_callable_and_args
 from mypy_extensions import VarArg
 
 T = TypeVar("T")
+
 @takes_callable_and_args
 def run(
     afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],

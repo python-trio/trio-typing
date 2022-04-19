@@ -12,7 +12,6 @@ if "trio_typing._tests.datadriven" not in sys.modules:
             RuntimeWarning,
         )
 
-
 else:
     from mypy import build
     from mypy.modulefinder import BuildSource
