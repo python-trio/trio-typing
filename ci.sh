@@ -2,7 +2,7 @@
 
 set -ex -o pipefail
 
-BLACK_VERSION=19.10b0
+BLACK_VERSION=22.3
 MYPY_VERSION=0.920
 
 pip install -U pip setuptools wheel
