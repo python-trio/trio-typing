@@ -167,7 +167,7 @@ def current_time() -> float: ...
 def run(
     afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
     *args: Any,
-    clock: trio.abc.Clock = ...,
+    clock: Optional[trio.abc.Clock] = ...,
     instruments: Sequence[trio.abc.Instrument] = ...,
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
 ) -> T: ...

@@ -95,7 +95,7 @@ def start_guest_run(
     done_callback: Callable[[outcome.Outcome[T]], None],
     run_sync_soon_not_threadsafe: Callable[[Callable[[], None]], None] = ...,
     host_uses_signal_set_wakeup_fd: bool = ...,
-    clock: trio.abc.Clock = ...,
+    clock: Optional[trio.abc.Clock] = ...,
     instruments: Sequence[trio.abc.Instrument] = ...,
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
 ) -> None: ...
