@@ -383,13 +383,13 @@ def set_custom_socket_factory(
 async def getnameinfo(sockaddr: Tuple[Any, ...], flags: int) -> Tuple[str, str]: ...
 async def getprotobyname(name: str) -> int: ...
 async def getaddrinfo(
-    host: Union[bytearray, bytes, str],
+    host: Union[bytes, str, None],
     port: Union[str, int, None],
     family: int = ...,
     type: int = ...,
     proto: int = ...,
     flags: int = ...,
-) -> List[Tuple[AddressFamily, SocketKind, int, str, Tuple[Any, ...]]]: ...
+) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
 
 class SocketType:
     family: int
