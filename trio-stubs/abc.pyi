@@ -27,7 +27,7 @@ class HostnameResolver(metaclass=ABCMeta):
     @abstractmethod
     async def getaddrinfo(
         self,
-        host: Union[bytes, str],
+        host: bytes,
         port: Union[str, int, None],
         family: int = ...,
         type: int = ...,
@@ -37,7 +37,7 @@ class HostnameResolver(metaclass=ABCMeta):
     @abstractmethod
     async def getnameinfo(
         self, sockaddr: Tuple[Any, ...], flags: int
-    ) -> Tuple[str, int]: ...
+    ) -> Tuple[str, str]: ...
 
 class SocketFactory(metaclass=ABCMeta):
     @abstractmethod
