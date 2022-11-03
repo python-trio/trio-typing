@@ -77,7 +77,8 @@ def reschedule(task: Task, next_send: outcome.Outcome[Any] = ...) -> None: ...
 @takes_callable_and_args
 def spawn_system_task(
     async_fn: Union[
-        Callable[..., Awaitable[Any]], Callable[[VarArg()], Awaitable[Any]]
+        Callable[..., Coroutine[Any, Any, Any]],
+        Callable[[VarArg()], Coroutine[Any, Any, Any]],
     ],
     *args: Any,
     name: object = ...,

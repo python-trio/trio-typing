@@ -7,6 +7,7 @@ from typing import (
     Awaitable,
     Callable,
     ContextManager,
+    Coroutine,
     FrozenSet,
     Generic,
     Iterator,
@@ -119,15 +120,15 @@ class Nursery(_NotConstructible, metaclass=ABCMeta):
     def start_soon(
         self,
         async_fn: Union[
-            # List these explicitly instead of Callable[..., Awaitable[Any]]
+            # List these explicitly instead of Callable[..., Coroutine[Any, Any, Any]]
             # so that even without the plugin we catch cases of passing a
             # function with keyword-only arguments to start_soon().
-            Callable[[], Awaitable[Any]],
-            Callable[[Any], Awaitable[Any]],
-            Callable[[Any, Any], Awaitable[Any]],
-            Callable[[Any, Any, Any], Awaitable[Any]],
-            Callable[[Any, Any, Any, Any], Awaitable[Any]],
-            Callable[[VarArg()], Awaitable[Any]],
+            Callable[[], Coroutine[Any, Any, Any]],
+            Callable[[Any], Coroutine[Any, Any, Any]],
+            Callable[[Any, Any], Coroutine[Any, Any, Any]],
+            Callable[[Any, Any, Any], Coroutine[Any, Any, Any]],
+            Callable[[Any, Any, Any, Any], Coroutine[Any, Any, Any]],
+            Callable[[VarArg()], Coroutine[Any, Any, Any]],
         ],
         *args: Any,
         name: object = None,
@@ -136,24 +137,31 @@ class Nursery(_NotConstructible, metaclass=ABCMeta):
     async def start(
         self,
         async_fn: Union[
-            # List these explicitly instead of Callable[..., Awaitable[Any]]
+            # List these explicitly instead of Callable[..., Coroutine[Any, Any, Any]]
             # so that even without the plugin we can infer the return type
             # of start(), and fail when a function is passed that doesn't
             # accept task_status.
-            Callable[[NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]],
-            Callable[[Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]],
             Callable[
-                [Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
+                [NamedArg(TaskStatus[T], "task_status")], Coroutine[Any, Any, Any]
             ],
             Callable[
-                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
+                [Any, NamedArg(TaskStatus[T], "task_status")], Coroutine[Any, Any, Any]
+            ],
+            Callable[
+                [Any, Any, NamedArg(TaskStatus[T], "task_status")],
+                Coroutine[Any, Any, Any],
+            ],
+            Callable[
+                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")],
+                Coroutine[Any, Any, Any],
             ],
             Callable[
                 [Any, Any, Any, Any, NamedArg(TaskStatus[T], "task_status")],
-                Awaitable[Any],
+                Coroutine[Any, Any, Any],
             ],
             Callable[
-                [VarArg(), NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
+                [VarArg(), NamedArg(TaskStatus[T], "task_status")],
+                Coroutine[Any, Any, Any],
             ],
         ],
         *args: Any,
@@ -556,7 +564,7 @@ class Path(pathlib.PurePath):
 T_resource = TypeVar("T_resource", bound=trio.abc.AsyncResource)
 
 async def serve_listeners(
-    handler: Callable[[T_resource], Awaitable[Any]],
+    handler: Callable[[T_resource], Coroutine[Any, Any, Any]],
     listeners: Sequence[trio.abc.Listener[T_resource]],
     *,
     handler_nursery: Optional[Nursery] = None,
@@ -577,7 +585,7 @@ async def open_tcp_listeners(
     port: int, *, host: Optional[AnyStr] = None, backlog: Optional[int] = None
 ) -> Sequence[SocketListener]: ...
 async def serve_tcp(
-    handler: Callable[[SocketStream], Awaitable[Any]],
+    handler: Callable[[SocketStream], Coroutine[Any, Any, Any]],
     port: int,
     *,
     host: Optional[AnyStr] = None,
@@ -607,7 +615,7 @@ async def open_ssl_over_tcp_listeners(
     backlog: Optional[int] = None,
 ) -> Sequence[trio.SSLListener]: ...
 async def serve_ssl_over_tcp(
-    handler: Callable[[trio.SSLStream], Awaitable[Any]],
+    handler: Callable[[trio.SSLStream], Coroutine[Any, Any, Any]],
     port: int,
     ssl_context: ssl.SSLContext,
     *,
