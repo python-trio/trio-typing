@@ -290,7 +290,7 @@ class open_memory_channel(Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]):
 # _signals
 def open_signal_receiver(
     *signals: signal.Signals,
-) -> ContextManager[AsyncIterator[signal.Signals]]: ...
+) -> ContextManager[AsyncIterator[int]]: ...
 
 # _highlevel_socket
 class SocketStream(trio.abc.HalfCloseableStream):
