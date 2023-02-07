@@ -463,10 +463,11 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                     + ([None] * len(type_var_types))
                     + callable_ty.arg_names[callable_args_idx + 1 :]
                 ),
-                variables=(
-                    list(callable_ty.variables)
-                    + cast(List[TypeVarLikeType], type_var_types)
-                ),
+                # Note that we do *not* append `type_var_types` to
+                # `callable_ty.variables`. Even though `*type_var_types` are in our new
+                # `callable_ty`'s argument types, they are *not* type variables that get
+                # bound when our new `callable_ty` gets called. They get bound when the
+                # `expanded_fn` that references our new `callable_ty` gets called.
             )
             expanded_fns.append(
                 fn_type.copy_modified(
