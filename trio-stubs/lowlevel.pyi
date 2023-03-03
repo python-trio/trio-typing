@@ -124,8 +124,8 @@ if sys.platform == "win32":
 
 # _core._traps
 class Abort(enum.Enum):
-    SUCCEEDED = ...
-    FAILED = ...
+    SUCCEEDED = 1
+    FAILED = 2
 
 async def cancel_shielded_checkpoint() -> None: ...
 async def wait_task_rescheduled(

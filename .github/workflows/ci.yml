@@ -30,6 +30,9 @@ jobs:
           - python: '3.9'
             check_typing: '1'
             extra_name: ', type check'
+          - python: '3.9'
+            check_stubs: '1'
+            extra_name: ', stubtest'
           - python: 'pypy-3.8'
             runtime_only: '1'
             extra_name: ', runtime only'
@@ -45,6 +48,7 @@ jobs:
         env:
           CHECK_FORMATTING: '${{ matrix.check_formatting }}'
           CHECK_TYPING: '${{ matrix.check_typing }}'
+          CHECK_STUBS: '${{ matrix.check_stubs }}'
           RUNTIME_ONLY: '${{ matrix.runtime_only }}'
           # Should match 'name:' up above
           JOB_NAME: 'Ubuntu (${{ matrix.python }}${{ matrix.extra_name }})'
