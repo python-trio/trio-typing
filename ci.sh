@@ -44,6 +44,17 @@ fi
 python setup.py sdist --formats=zip
 pip install dist/*.zip
 
+if [ "$CHECK_STUBS" = "1" ]; then
+    pip install mypy==${MYPY_VERSION}
+    mkdir empty; cd empty
+    ln -s ../async_generator-stubs async_generator
+    ln -s ../outcome-stubs outcome
+    ln -s ../trio-stubs trio
+    ln -s ../trio_typing trio_typing
+    python -m mypy.stubtest --allowlist=../allowlist.txt --ignore-unused-allowlist trio
+    exit $?
+fi
+
 # Actual tests
 pip install -Ur test-requirements.txt
 
@@ -59,3 +70,4 @@ else
     pip install mypy==${MYPY_VERSION}
     pytest -W error -W ignore:::distutils -ra -v -p trio_typing._tests.datadriven --pyargs trio_typing
 fi
+
