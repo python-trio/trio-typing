@@ -165,6 +165,68 @@ def start_thread_soon(
     fn: Callable[[], T], deliver: Callable[[outcome.Outcome[T]], None]
 ) -> None: ...
 
+# _subprocess
+
+# There's a lot of duplication here because mypy doesn't
+# have a good way to represent overloads that differ only
+# slightly. A cheat sheet:
+# - on Windows, command is Union[str, Sequence[str]];
+#   on Unix, command is str if shell=True and Sequence[str] otherwise
+# - on Windows, there are startupinfo and creationflags options;
+#   on Unix, there are preexec_fn, restore_signals, start_new_session, and pass_fds
+# - run_process() has the signature of open_process() plus arguments
+#   capture_stdout, capture_stderr, check, deliver_cancel, and the ability to pass
+#   bytes as stdin
+
+if sys.platform == "win32":
+    async def open_process(
+        command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
+        *,
+        stdin: _Redirect = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: Optional[StrOrBytesPath] = ...,
+        env: Optional[Mapping[str, str]] = ...,
+        startupinfo: subprocess.STARTUPINFO = ...,
+        creationflags: int = ...,
+    ) -> Process: ...
+
+else:
+    @overload
+    async def open_process(
+        command: StrOrBytesPath,
+        *,
+        stdin: _Redirect = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: Literal[True],
+        cwd: Optional[StrOrBytesPath] = ...,
+        env: Optional[Mapping[str, str]] = ...,
+        preexec_fn: Optional[Callable[[], Any]] = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Sequence[int] = ...,
+    ) -> Process: ...
+    @overload
+    async def open_process(
+        command: Sequence[StrOrBytesPath],
+        *,
+        stdin: _Redirect = ...,
+        stdout: _Redirect = ...,
+        stderr: _Redirect = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: Optional[StrOrBytesPath] = ...,
+        env: Optional[Mapping[str, str]] = ...,
+        preexec_fn: Optional[Callable[[], Any]] = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Sequence[int] = ...,
+    ) -> Process: ...
+
 # _unix_pipes
 class FdStream(trio.abc.Stream):
     def __init__(self, fd: int): ...
