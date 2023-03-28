@@ -73,7 +73,7 @@ class HalfCloseableStream(Stream):
     @abstractmethod
     async def send_eof(self) -> None: ...
 
-_SomeResource = TypeVar("_SomeResource", bound=AsyncResource)
+_SomeResource = TypeVar("_SomeResource", bound=AsyncResource, covariant=True)
 
 class Listener(AsyncResource, Generic[_SomeResource]):
     @abstractmethod
