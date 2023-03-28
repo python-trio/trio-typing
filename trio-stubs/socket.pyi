@@ -389,7 +389,15 @@ async def getaddrinfo(
     type: int = ...,
     proto: int = ...,
     flags: int = ...,
-) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
+) -> List[
+    Tuple[
+        AddressFamily,
+        SocketKind,
+        int,
+        str,
+        Union[Tuple[str, int], Tuple[str, int, int, int]],
+    ]
+]: ...
 
 class SocketType:
     family: int
