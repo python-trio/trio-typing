@@ -38,10 +38,10 @@ This repository provides:
 Supported platforms
 ~~~~~~~~~~~~~~~~~~~
 
-Like Trio, we require Python 3.6 or later. Both PyPy and CPython are
+Like Trio, we require Python 3.7 or later. Both PyPy and CPython are
 supported at runtime, but type checking must occur on CPython (due to
 limitations of mypy).  We test on Linux using the latest releases
-from the 3.6, 3.7, and 3.8 branches, as well as 3.9-dev nightly. We're
+from the 3.7, 3.8, 3.9, and 3.10 branches. We're
 not knowingly doing anything OS-specific, so other OSes should work
 too.
 
