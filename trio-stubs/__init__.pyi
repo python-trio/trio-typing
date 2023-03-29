@@ -183,6 +183,7 @@ def run(
     clock: Optional[trio.abc.Clock] = ...,
     instruments: Sequence[trio.abc.Instrument] = ...,
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
+    strict_exception_groups: bool = ...,
 ) -> T: ...
 
 # _timeouts
@@ -335,6 +336,59 @@ class SocketListener(trio.abc.Listener[SocketStream]):
     def __init__(self, socket: trio.socket.SocketType) -> None: ...
     async def accept(self) -> SocketStream: ...
     async def aclose(self) -> None: ...
+
+# _dtls
+class DTLSEndpoint:
+    socket: trio.socket.SocketType
+    incoming_packets_buffer: int
+    def __init__(
+        self, socket: trio.socket.SocketType, *, incoming_packets_buffer: int = ...
+    ) -> None: ...
+    # ssl_context is an OpenSSL.SSL.Context from PyOpenSSL, but we can't
+    # import that name because we don't depend on PyOpenSSL
+    def connect(
+        self, address: Union[Tuple[Any, ...], str, bytes], ssl_context: Any
+    ) -> DTLSChannel: ...
+    @takes_callable_and_args
+    async def serve(
+        self,
+        ssl_context: Any,
+        async_fn: Union[
+            Callable[..., Awaitable[Any]],
+            Callable[[DTLSChannel, VarArg()], Awaitable[Any]],
+        ],
+        *args: Any,
+        task_status: TaskStatus[None] = ...,
+    ) -> NoReturn: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> DTLSEndpoint: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None: ...
+
+class DTLSChannel(_NotConstructible, trio.abc.Channel[bytes], metaclass=ABCMeta):
+    endpoint: DTLSEndpoint
+    peer_address: Union[Tuple[Any, ...], str, bytes]
+    async def do_handshake(
+        self, *, initial_retransmit_timeout: float = ...
+    ) -> None: ...
+    async def send(self, data: bytes) -> None: ...
+    async def receive(self) -> bytes: ...
+    def set_ciphertext_mtu(self, new_mtu: int) -> None: ...
+    def get_cleartext_mtu(self) -> int: ...
+    def statistics(self) -> Any: ...
+    async def aclose(self) -> None: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> DTLSChannel: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None: ...
 
 # _file_io
 
@@ -697,7 +751,7 @@ class _HasFileno(Protocol):
 
 _Redirect = Union[int, _HasFileno, None]
 
-class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
+class Process(_NotConstructible, metaclass=ABCMeta):
     stdin: Optional[trio.abc.SendStream]
     stdout: Optional[trio.abc.ReceiveStream]
     stderr: Optional[trio.abc.ReceiveStream]
@@ -706,7 +760,6 @@ class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
     pid: int
     @property
     def returncode(self) -> Optional[int]: ...
-    async def aclose(self) -> None: ...
     async def wait(self) -> int: ...
     def poll(self) -> Optional[int]: ...
     def send_signal(self, sig: signal.Signals) -> None: ...
@@ -725,22 +778,10 @@ class Process(trio.abc.AsyncResource, _NotConstructible, metaclass=ABCMeta):
 #   bytes as stdin
 
 if sys.platform == "win32":
-    async def open_process(
-        command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
-        *,
-        stdin: _Redirect = ...,
-        stdout: _Redirect = ...,
-        stderr: _Redirect = ...,
-        close_fds: bool = ...,
-        shell: bool = ...,
-        cwd: Optional[StrOrBytesPath] = ...,
-        env: Optional[Mapping[str, str]] = ...,
-        startupinfo: subprocess.STARTUPINFO = ...,
-        creationflags: int = ...,
-    ) -> Process: ...
     async def run_process(
         command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
         *,
+        task_status: TaskStatus[Process] = ...,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
         capture_stderr: bool = ...,
@@ -758,41 +799,10 @@ if sys.platform == "win32":
 
 else:
     @overload
-    async def open_process(
-        command: StrOrBytesPath,
-        *,
-        stdin: _Redirect = ...,
-        stdout: _Redirect = ...,
-        stderr: _Redirect = ...,
-        close_fds: bool = ...,
-        shell: Literal[True],
-        cwd: Optional[StrOrBytesPath] = ...,
-        env: Optional[Mapping[str, str]] = ...,
-        preexec_fn: Optional[Callable[[], Any]] = ...,
-        restore_signals: bool = ...,
-        start_new_session: bool = ...,
-        pass_fds: Sequence[int] = ...,
-    ) -> Process: ...
-    @overload
-    async def open_process(
-        command: Sequence[StrOrBytesPath],
-        *,
-        stdin: _Redirect = ...,
-        stdout: _Redirect = ...,
-        stderr: _Redirect = ...,
-        close_fds: bool = ...,
-        shell: bool = ...,
-        cwd: Optional[StrOrBytesPath] = ...,
-        env: Optional[Mapping[str, str]] = ...,
-        preexec_fn: Optional[Callable[[], Any]] = ...,
-        restore_signals: bool = ...,
-        start_new_session: bool = ...,
-        pass_fds: Sequence[int] = ...,
-    ) -> Process: ...
-    @overload
     async def run_process(
         command: StrOrBytesPath,
         *,
+        task_status: TaskStatus[Process] = ...,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
         capture_stderr: bool = ...,
@@ -813,6 +823,7 @@ else:
     async def run_process(
         command: Sequence[StrOrBytesPath],
         *,
+        task_status: TaskStatus[Process] = ...,
         stdin: Union[bytes, _Redirect] = ...,
         capture_stdout: bool = ...,
         capture_stderr: bool = ...,

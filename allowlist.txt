@@ -111,22 +111,21 @@ trio.socket.fromshare
 trio.socket.ntohl
 
 # Not present in stub (but maybe should be?)
-trio.DTLSChannel
-trio.DTLSEndpoint
 trio.MultiError.derive
 trio.NeedHandshakeError
 trio.Path.hardlink_to
 trio.Path.is_mount
 trio.Path.link_to
 trio.Path.readlink
+trio.Process.aclose
 trio.Process.encoding
 trio.Process.errors
 trio.Process.universal_newlines
 trio.TrioDeprecationWarning
 trio.lowlevel.FdStream.close
-trio.lowlevel.open_process
 
 # NoPublicConstructor
+trio.DTLSChannel.__init__
 trio.MemoryReceiveChannel.__init__
 trio.MemorySendChannel.__init__
 trio.Nursery.__init__
