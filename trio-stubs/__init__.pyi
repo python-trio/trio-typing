@@ -369,7 +369,7 @@ class DTLSEndpoint:
         exc_tb: TracebackType | None,
     ) -> None: ...
 
-class DTLSChannel(_NotConstructible, trio.abc.Channel[bytes]):
+class DTLSChannel(_NotConstructible, trio.abc.Channel[bytes], metaclass=ABCMeta):
     endpoint: DTLSEndpoint
     peer_address: Union[Tuple[Any, ...], str, bytes]
     async def do_handshake(

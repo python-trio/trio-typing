@@ -7,6 +7,7 @@ from typing import (
     ContextManager,
     Coroutine,
     Generic,
+    Mapping,
     NoReturn,
     Optional,
     Sequence,
@@ -14,8 +15,11 @@ from typing import (
     Sequence,
     TypeVar,
     Tuple,
+    overload,
 )
+from _typeshed import StrOrBytesPath
 from trio_typing import Nursery, takes_callable_and_args
+from typing_extensions import Literal, Protocol
 from mypy_extensions import VarArg
 import trio
 import outcome
@@ -178,6 +182,11 @@ def start_thread_soon(
 #   capture_stdout, capture_stderr, check, deliver_cancel, and the ability to pass
 #   bytes as stdin
 
+class _HasFileno(Protocol):
+    def fileno(self) -> int: ...
+
+_Redirect = Union[int, _HasFileno, None]
+
 if sys.platform == "win32":
     async def open_process(
         command: Union[StrOrBytesPath, Sequence[StrOrBytesPath]],
@@ -191,7 +200,7 @@ if sys.platform == "win32":
         env: Optional[Mapping[str, str]] = ...,
         startupinfo: subprocess.STARTUPINFO = ...,
         creationflags: int = ...,
-    ) -> Process: ...
+    ) -> trio.Process: ...
 
 else:
     @overload
@@ -209,7 +218,7 @@ else:
         restore_signals: bool = ...,
         start_new_session: bool = ...,
         pass_fds: Sequence[int] = ...,
-    ) -> Process: ...
+    ) -> trio.Process: ...
     @overload
     async def open_process(
         command: Sequence[StrOrBytesPath],
@@ -225,7 +234,7 @@ else:
         restore_signals: bool = ...,
         start_new_session: bool = ...,
         pass_fds: Sequence[int] = ...,
-    ) -> Process: ...
+    ) -> trio.Process: ...
 
 # _unix_pipes
 class FdStream(trio.abc.Stream):
