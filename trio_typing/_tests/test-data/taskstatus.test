@@ -5,13 +5,14 @@ from trio_typing import TaskStatus
 async def child(arg: int, *, task_status: TaskStatus[int]) -> None:
     await trio.sleep(arg)
     task_status.started("hi")  # E: Argument 1 to "started" of "TaskStatus" has incompatible type "str"; expected "int"
-    task_status.started()  # E: TaskStatus.started() requires an argument for types other than TaskStatus[None]
+    task_status.started()  # E: Missing positional argument "value" in call to "started" of "TaskStatus"
 
 async def child2(
     arg: int, *, task_status: TaskStatus[None] = trio.TASK_STATUS_IGNORED
 ) -> None:
     await trio.sleep(arg)
     task_status.started()
+    task_status.started(None)
     await child(arg, task_status=task_status)  # E: Argument "task_status" to "child" has incompatible type "TaskStatus[None]"; expected "TaskStatus[int]"
 
 async def parent() -> None:
@@ -34,13 +35,14 @@ from trio_typing import TaskStatus
 async def child(arg: int, *, task_status: TaskStatus[int]) -> None:
     await trio.sleep(arg)
     task_status.started("hi")  # E: Argument 1 to "started" of "TaskStatus" has incompatible type "str"; expected "int"
-    task_status.started()
+    task_status.started()  # E: Missing positional argument "value" in call to "started" of "TaskStatus"
 
 async def child2(
     arg: int, *, task_status: TaskStatus[None] = trio.TASK_STATUS_IGNORED
 ) -> None:
     await trio.sleep(arg)
     task_status.started()
+    task_status.started(None)
     await child(arg, task_status=task_status)  # E: Argument "task_status" to "child" has incompatible type "TaskStatus[None]"; expected "TaskStatus[int]"
 
 async def parent() -> None:

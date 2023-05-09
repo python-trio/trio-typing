@@ -139,10 +139,6 @@ The ``trio_typing.plugin`` mypy plugin provides:
   file object in binary mode and ``await trio.open_file("bar")`` returns
   an async file object in text mode
 
-* Signature checking for ``task_status.started()`` with no arguments,
-  so it raises an error if the ``task_status`` object is not of type
-  ``TaskStatus[None]``
-
 * Boilerplate reduction for functions that take parameters ``(fn, *args)``
   and ultimately invoke ``fn(*args)``: just write::
 
