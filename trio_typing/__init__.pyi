@@ -38,7 +38,10 @@ def takes_callable_and_args(fn: T) -> T:
     return fn
 
 class TaskStatus(Protocol[T_contra]):
-    def started(self, value: T_contra = ...) -> None: ...
+    @overload
+    def started(self: TaskStatus[None]) -> None: ...
+    @overload
+    def started(self, value: T_contra) -> None: ...
 
 if sys.version_info >= (3, 6):
     from typing import AsyncGenerator as AsyncGenerator

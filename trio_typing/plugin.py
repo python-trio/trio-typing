@@ -51,13 +51,6 @@ class TrioPlugin(Plugin):
             return yield_from_callback
         return None
 
-    def get_method_hook(
-        self, fullname: str
-    ) -> Optional[Callable[[MethodContext], Type]]:
-        if fullname == "trio_typing.TaskStatus.started":
-            return started_callback
-        return None
-
 
 def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
     """Infer a better return type for @asynccontextmanager,
@@ -320,25 +313,6 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
             supertype_label="expected iterable type",
         )
 
-    return ctx.default_return_type
-
-
-def started_callback(ctx: MethodContext) -> Type:
-    """Raise an error if task_status.started() is called without an argument
-    and the TaskStatus is not declared to accept a result of type None.
-    """
-    self_type = get_proper_type(ctx.type)
-    if (
-        (not ctx.arg_types or not ctx.arg_types[0])
-        and isinstance(self_type, Instance)
-        and self_type.args
-        and not isinstance(get_proper_type(self_type.args[0]), NoneTyp)
-    ):
-        ctx.api.fail(
-            "TaskStatus.started() requires an argument for types other than "
-            "TaskStatus[None]",
-            ctx.context,
-        )
     return ctx.default_return_type
 
 
