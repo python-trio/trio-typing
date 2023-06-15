@@ -2,6 +2,7 @@ import sys
 from typing import Callable, List, Optional, Sequence, Tuple, cast
 from typing_extensions import Literal
 from typing import Type as typing_Type
+from mypy import message_registry
 from mypy.plugin import Plugin, FunctionContext, MethodContext, CheckerPluginInterface
 from mypy.nodes import (
     ARG_POS,
@@ -257,6 +258,7 @@ def yield_callback(ctx: FunctionContext) -> Type:
             subtype=arg_type,
             supertype=yield_type,
             context=ctx.context,
+            msg=message_registry.INCOMPATIBLE_TYPES,
             subtype_label="yield_ argument",
             supertype_label="declared YieldType",
         )
@@ -292,6 +294,7 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
             subtype=their_yield_type,
             supertype=our_yield_type,
             context=ctx.context,
+            msg=message_registry.INCOMPATIBLE_TYPES,
             subtype_label="yield_from_ argument YieldType",
             supertype_label="local declared YieldType",
         )
@@ -299,6 +302,7 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
             subtype=our_send_type,
             supertype=their_send_type,
             context=ctx.context,
+            msg=message_registry.INCOMPATIBLE_TYPES,
             subtype_label="local declared SendType",
             supertype_label="yield_from_ argument SendType",
         )
@@ -309,6 +313,7 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
                 "typing.AsyncIterable", [our_yield_type]
             ),
             context=ctx.context,
+            msg=message_registry.INCOMPATIBLE_TYPES,
             subtype_label="yield_from_ argument type",
             supertype_label="expected iterable type",
         )
@@ -475,6 +480,7 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                     ctx.api.named_generic_type("builtins.object", []),
                     line=ctx.context.line,
                     column=ctx.context.column,
+                    default=AnyType(TypeOfAny.from_omitted_generics),
                 )
             )
         return Overloaded(expanded_fns)

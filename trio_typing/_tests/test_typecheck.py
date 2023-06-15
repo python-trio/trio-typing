@@ -31,6 +31,10 @@ else:
             options = Options()
             options.show_traceback = True
             options.python_version = sys.version_info[:2]
+            options.force_union_syntax = True
+            options.force_uppercase_builtins = True
+            options.hide_error_codes = True
+
             if testcase.name.endswith("_36"):
                 options.python_version = (3, 6)
             else:
