@@ -102,6 +102,7 @@ def start_guest_run(
     clock: Optional[trio.abc.Clock] = ...,
     instruments: Sequence[trio.abc.Instrument] = ...,
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
+    strict_exception_groups: bool = ...,
 ) -> None: ...
 
 # kqueue only
