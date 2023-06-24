@@ -12,7 +12,7 @@ import sys
 import trio
 from _typeshed import ReadableBuffer, WriteableBuffer
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 import socket as _stdlib_socket
 from socket import (
@@ -340,6 +340,8 @@ from socket import (
     SocketKind,
 )
 
+IP_BIND_ADDRESS_NO_PORT: int
+
 if sys.version_info >= (3, 6):
     from socket import (
         AF_ALG as AF_ALG,
@@ -404,7 +406,7 @@ class SocketType:
     type: int
     proto: int
     did_shutdown_SHUT_WR: bool
-    def __enter__(self: T) -> T: ...
+    def __enter__(self: _T) -> _T: ...
     def __exit__(self, *args: Any) -> None: ...
     def dup(self) -> SocketType: ...
     def close(self) -> None: ...

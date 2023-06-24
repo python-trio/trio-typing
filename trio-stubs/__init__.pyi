@@ -23,6 +23,7 @@ from typing import (
     BinaryIO,
     IO,
     overload,
+    final,
 )
 from types import TracebackType
 
@@ -39,12 +40,13 @@ import subprocess
 import ssl
 import sys
 import trio
+import attr
 from . import lowlevel as lowlevel, socket as socket, abc as abc
 from . import to_thread as to_thread, from_thread as from_thread
 
-T = TypeVar("T")
-T_co = TypeVar("T_co", covariant=True)
-T_contra = TypeVar("T_contra", contravariant=True)
+_T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
+_T_contra = TypeVar("_T_contra", contravariant=True)
 
 class _Statistics:
     def __getattr__(self, name: str) -> Any: ...
@@ -79,18 +81,21 @@ class EndOfChannel(Exception):
 class NoHandshakeError(Exception):
     pass
 
+@final
 class Cancelled(BaseException, _NotConstructible, metaclass=ABCMeta):
     pass
 
 # _core._multierror
 class MultiError(BaseException):
-    exceptions: List[BaseException]
+    @property
+    def exceptions(self) -> List[BaseException]:
+        pass
     def __init__(
         self, exceptions: Sequence[BaseException], *, _collapse: bool = ...
     ): ...
     def __new__(
-        cls: T, exceptions: Sequence[BaseException], *, _collapse: bool = ...
-    ) -> T: ...
+        cls: _T, exceptions: Sequence[BaseException], *, _collapse: bool = ...
+    ) -> _T: ...
     @classmethod
     def filter(
         cls,
@@ -105,12 +110,14 @@ class MultiError(BaseException):
 # _core._run
 TASK_STATUS_IGNORED: TaskStatus[Any]
 
-class CancelScope:
-    deadline: float
-    shield: bool
-    cancel_called: bool
+@final
+@attr.s(eq=False, repr=False, slots=True, auto_attribs=False)
+class CancelScope(metaclass=ABCMeta):
+    deadline: float = attr.ib(default=None, kw_only=True)
+    shield: bool = attr.ib(default=None, kw_only=True)
+    @property
+    def cancel_called(self) -> bool: ...
     cancelled_caught: bool
-    def __init__(self, *, deadline: float = ..., shield: bool = ...): ...
     def __enter__(self) -> CancelScope: ...
     def __exit__(
         self,
@@ -120,6 +127,8 @@ class CancelScope:
     ) -> bool | None: ...
     def cancel(self) -> None: ...
 
+@final
+@attr.s(eq=False, repr=False, slots=True)
 class Nursery(_NotConstructible, metaclass=ABCMeta):
     cancel_scope: CancelScope
     @property
@@ -151,25 +160,25 @@ class Nursery(_NotConstructible, metaclass=ABCMeta):
             # so that even without the plugin we can infer the return type
             # of start(), and fail when a function is passed that doesn't
             # accept task_status.
-            Callable[[NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]],
-            Callable[[Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]],
+            Callable[[NamedArg(TaskStatus[_T], "task_status")], Awaitable[Any]],
+            Callable[[Any, NamedArg(TaskStatus[_T], "task_status")], Awaitable[Any]],
             Callable[
-                [Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
+                [Any, Any, NamedArg(TaskStatus[_T], "task_status")], Awaitable[Any]
             ],
             Callable[
-                [Any, Any, Any, NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
+                [Any, Any, Any, NamedArg(TaskStatus[_T], "task_status")], Awaitable[Any]
             ],
             Callable[
-                [Any, Any, Any, Any, NamedArg(TaskStatus[T], "task_status")],
+                [Any, Any, Any, Any, NamedArg(TaskStatus[_T], "task_status")],
                 Awaitable[Any],
             ],
             Callable[
-                [VarArg(), NamedArg(TaskStatus[T], "task_status")], Awaitable[Any]
+                [VarArg(), NamedArg(TaskStatus[_T], "task_status")], Awaitable[Any]
             ],
         ],
         *args: Any,
         name: object = None,
-    ) -> T: ...
+    ) -> _T: ...
 
 def open_nursery(
     strict_exception_groups: bool | None = ...,
@@ -178,13 +187,13 @@ def current_effective_deadline() -> float: ...
 def current_time() -> float: ...
 @takes_callable_and_args
 def run(
-    afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
+    afn: Union[Callable[..., Awaitable[_T]], Callable[[VarArg()], Awaitable[_T]]],
     *args: Any,
     clock: Optional[trio.abc.Clock] = ...,
     instruments: Sequence[trio.abc.Instrument] = ...,
     restrict_keyboard_interrupt_to_checkpoints: bool = ...,
     strict_exception_groups: bool = ...,
-) -> T: ...
+) -> _T: ...
 
 # _timeouts
 def move_on_at(deadline: float) -> CancelScope: ...
@@ -199,18 +208,23 @@ class TooSlowError(Exception):
     pass
 
 # _sync
-class Event:
+@final
+@attr.s(eq=False, repr=False, slots=True)
+class Event(metaclass=ABCMeta):
     def is_set(self) -> bool: ...
     def set(self) -> None: ...
     async def wait(self) -> None: ...
     def statistics(self) -> _Statistics: ...
 
-class CapacityLimiter:
+@final
+class CapacityLimiter(metaclass=ABCMeta):
     # float here really means Union[int, math.inf] but mypy doesn't
     # understand that
     total_tokens: float
-    borrowed_tokens: int
-    available_tokens: float
+    @property
+    def borrowed_tokens(self) -> int: ...
+    @property
+    def available_tokens(self) -> float: ...
     def __init__(self, total_tokens: float): ...
     def acquire_nowait(self) -> None: ...
     def acquire_on_behalf_of_nowait(self, borrower: object) -> None: ...
@@ -222,9 +236,12 @@ class CapacityLimiter:
     async def __aenter__(self) -> None: ...
     async def __aexit__(self, *exc: object) -> None: ...
 
-class Semaphore:
-    value: int
-    max_value: Optional[int]
+@final
+class Semaphore(metaclass=ABCMeta):
+    @property
+    def value(self) -> int: ...
+    @property
+    def max_value(self) -> Optional[int]: ...
     def __init__(self, initial_value: int, *, max_value: Optional[int] = None): ...
     def acquire_nowait(self) -> None: ...
     async def acquire(self) -> None: ...
@@ -233,7 +250,8 @@ class Semaphore:
     async def __aenter__(self) -> None: ...
     async def __aexit__(self, *exc: object) -> None: ...
 
-class Lock:
+@final
+class Lock(metaclass=ABCMeta):
     def locked(self) -> bool: ...
     def acquire_nowait(self) -> None: ...
     async def acquire(self) -> None: ...
@@ -242,11 +260,19 @@ class Lock:
     async def __aenter__(self) -> None: ...
     async def __aexit__(self, *exc: object) -> None: ...
 
-class StrictFIFOLock(Lock):
-    pass
+@final
+class StrictFIFOLock(metaclass=ABCMeta):
+    def locked(self) -> bool: ...
+    def acquire_nowait(self) -> None: ...
+    async def acquire(self) -> None: ...
+    def release(self) -> None: ...
+    def statistics(self) -> _Statistics: ...
+    async def __aenter__(self) -> None: ...
+    async def __aexit__(self, *exc: object) -> None: ...
 
-class Condition:
-    def __init__(self, lock: Optional[Lock] = None) -> None: ...
+@final
+class Condition(metaclass=ABCMeta):
+    def __init__(self, lock: Optional[Union[Lock, StrictFIFOLock]] = None) -> None: ...
     def locked(self) -> bool: ...
     def acquire_nowait(self) -> None: ...
     async def acquire(self) -> None: ...
@@ -260,13 +286,11 @@ class Condition:
 
 # _highlevel_generic
 async def aclose_forcefully(resource: trio.abc.AsyncResource) -> None: ...
-
+@final
+@attr.s(eq=False, hash=False)
 class StapledStream(trio.abc.HalfCloseableStream):
-    send_stream: trio.abc.SendStream
-    receive_stream: trio.abc.ReceiveStream
-    def __init__(
-        self, send_stream: trio.abc.SendStream, receive_stream: trio.abc.ReceiveStream
-    ) -> None: ...
+    send_stream: trio.abc.SendStream = attr.ib()
+    receive_stream: trio.abc.ReceiveStream = attr.ib()
     async def aclose(self) -> None: ...
     async def send_all(self, data: Union[bytes, memoryview]) -> None: ...
     async def wait_send_all_might_not_block(self) -> None: ...
@@ -274,14 +298,16 @@ class StapledStream(trio.abc.HalfCloseableStream):
     async def send_eof(self) -> None: ...
 
 # _channel
-class MemorySendChannel(trio.abc.SendChannel[T_contra]):
-    def send_nowait(self, value: T_contra) -> None: ...
-    async def send(self, value: T_contra) -> None: ...
-    def clone(self: T) -> T: ...
+@final
+@attr.s(eq=False, repr=False)
+class MemorySendChannel(trio.abc.SendChannel[_T_contra]):
+    def send_nowait(self, value: _T_contra) -> None: ...
+    async def send(self, value: _T_contra) -> None: ...
+    def clone(self: _T) -> _T: ...
     async def aclose(self) -> None: ...
     def statistics(self) -> _Statistics: ...
     def close(self) -> None: ...
-    def __enter__(self) -> MemorySendChannel[T_contra]: ...
+    def __enter__(self) -> MemorySendChannel[_T_contra]: ...
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -289,14 +315,16 @@ class MemorySendChannel(trio.abc.SendChannel[T_contra]):
         exc_tb: TracebackType | None,
     ) -> None: ...
 
-class MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
-    def receive_nowait(self) -> T_co: ...
-    async def receive(self) -> T_co: ...
-    def clone(self: T) -> T: ...
+@final
+@attr.s(eq=False, repr=False)
+class MemoryReceiveChannel(trio.abc.ReceiveChannel[_T_co]):
+    def receive_nowait(self) -> _T_co: ...
+    async def receive(self) -> _T_co: ...
+    def clone(self: _T) -> _T: ...
     async def aclose(self) -> None: ...
     def statistics(self) -> _Statistics: ...
     def close(self) -> None: ...
-    def __enter__(self) -> MemoryReceiveChannel[T_co]: ...
+    def __enter__(self) -> MemoryReceiveChannel[_T_co]: ...
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -305,10 +333,10 @@ class MemoryReceiveChannel(trio.abc.ReceiveChannel[T_co]):
     ) -> None: ...
 
 # written as a class so you can say open_memory_channel[int](5)
-class open_memory_channel(Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]):
+class open_memory_channel(Tuple[MemorySendChannel[_T], MemoryReceiveChannel[_T]]):
     def __new__(  # type: ignore[misc]  # "must return a subtype"
         cls, max_buffer_size: float
-    ) -> Tuple[MemorySendChannel[T], MemoryReceiveChannel[T]]: ...
+    ) -> Tuple[MemorySendChannel[_T], MemoryReceiveChannel[_T]]: ...
     def __init__(self, max_buffer_size: float): ...
 
 # _signals
@@ -317,6 +345,7 @@ def open_signal_receiver(
 ) -> ContextManager[AsyncIterator[int]]: ...
 
 # _highlevel_socket
+@final
 class SocketStream(trio.abc.HalfCloseableStream):
     socket: trio.socket.SocketType
     def __init__(self, socket: trio.socket.SocketType) -> None: ...
@@ -331,6 +360,7 @@ class SocketStream(trio.abc.HalfCloseableStream):
     async def receive_some(self, max_bytes: Optional[int] = ...) -> bytes: ...
     async def send_eof(self) -> None: ...
 
+@final
 class SocketListener(trio.abc.Listener[SocketStream]):
     socket: trio.socket.SocketType
     def __init__(self, socket: trio.socket.SocketType) -> None: ...
@@ -338,7 +368,8 @@ class SocketListener(trio.abc.Listener[SocketStream]):
     async def aclose(self) -> None: ...
 
 # _dtls
-class DTLSEndpoint:
+@final
+class DTLSEndpoint(metaclass=ABCMeta):
     socket: trio.socket.SocketType
     incoming_packets_buffer: int
     def __init__(
@@ -369,6 +400,7 @@ class DTLSEndpoint:
         exc_tb: TracebackType | None,
     ) -> None: ...
 
+@final
 class DTLSChannel(_NotConstructible, trio.abc.Channel[bytes], metaclass=ABCMeta):
     endpoint: DTLSEndpoint
     peer_address: Union[Tuple[Any, ...], str, bytes]
@@ -419,7 +451,7 @@ class AsyncIO(AsyncIterator[AnyStr], Generic[AnyStr], trio.abc.AsyncResource):
     async def writelines(self, lines: Iterable[AnyStr]) -> None: ...
     async def __anext__(self) -> AnyStr: ...
     def __aiter__(self) -> AsyncIterator[AnyStr]: ...
-    async def __aenter__(self: T) -> T: ...
+    async def __aenter__(self: _T) -> _T: ...
     async def __aexit__(self, *exc: object) -> None: ...
 
 class AsyncBinaryIO(AsyncIO[bytes]):
@@ -533,6 +565,7 @@ def wrap_file(file: io.RawIOBase) -> AsyncBinaryIO: ...
 def wrap_file(file: Union[IO[Any], io.IOBase]) -> AsyncIO[Any]: ...
 
 # _path
+@final
 class Path(pathlib.PurePath):
     @classmethod
     async def cwd(cls) -> Path: ...
@@ -630,14 +663,14 @@ class Path(pathlib.PurePath):
     ) -> int: ...
 
 # _highlevel_serve_listeners
-T_resource = TypeVar("T_resource", bound=trio.abc.AsyncResource)
+_T_resource = TypeVar("_T_resource", bound=trio.abc.AsyncResource)
 
 async def serve_listeners(
-    handler: Callable[[T_resource], Awaitable[Any]],
-    listeners: Sequence[trio.abc.Listener[T_resource]],
+    handler: Callable[[_T_resource], Awaitable[Any]],
+    listeners: Sequence[trio.abc.Listener[_T_resource]],
     *,
     handler_nursery: Optional[Nursery] = None,
-    task_status: TaskStatus[Sequence[trio.abc.Listener[T_resource]]] = ...,
+    task_status: TaskStatus[Sequence[trio.abc.Listener[_T_resource]]] = ...,
 ) -> NoReturn: ...
 
 # _highlevel_open_tcp_stream
@@ -696,6 +729,7 @@ async def serve_ssl_over_tcp(
 ) -> NoReturn: ...
 
 # _ssl
+@final
 class SSLStream(trio.abc.Stream):
     transport_stream: trio.abc.Stream
     context: ssl.SSLContext
@@ -732,6 +766,7 @@ class SSLStream(trio.abc.Stream):
     async def wait_send_all_might_not_block(self) -> None: ...
     async def receive_some(self, max_bytes: Optional[int] = ...) -> bytes: ...
 
+@final
 class SSLListener(trio.abc.Listener[SSLStream]):
     transport_listener: trio.abc.Listener[trio.abc.Stream]
     def __init__(
@@ -751,6 +786,7 @@ class _HasFileno(Protocol):
 
 _Redirect = Union[int, _HasFileno, None]
 
+@final
 class Process(_NotConstructible, metaclass=ABCMeta):
     stdin: Optional[trio.abc.SendStream]
     stdout: Optional[trio.abc.ReceiveStream]

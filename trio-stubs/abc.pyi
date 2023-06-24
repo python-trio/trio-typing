@@ -2,7 +2,7 @@ import trio
 from abc import ABCMeta, abstractmethod
 from typing import List, Tuple, Union, Any, Optional, Generic, TypeVar, AsyncIterator
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 class Clock(metaclass=ABCMeta):
     @abstractmethod
@@ -51,7 +51,7 @@ class SocketFactory(metaclass=ABCMeta):
 class AsyncResource(metaclass=ABCMeta):
     @abstractmethod
     async def aclose(self) -> None: ...
-    async def __aenter__(self: T) -> T: ...
+    async def __aenter__(self: _T) -> _T: ...
     async def __aexit__(self, *exc: object) -> None: ...
 
 class SendStream(AsyncResource):
@@ -81,18 +81,18 @@ class Listener(AsyncResource, Generic[_SomeResource]):
 
 _T1 = TypeVar("_T1")
 
-T_co = TypeVar("T_co", covariant=True)
-T_contra = TypeVar("T_contra", contravariant=True)
+_T_co = TypeVar("_T_co", covariant=True)
+_T_contra = TypeVar("_T_contra", contravariant=True)
 
-class SendChannel(AsyncResource, Generic[T_contra]):
+class SendChannel(AsyncResource, Generic[_T_contra]):
     @abstractmethod
-    async def send(self, value: T_contra) -> None: ...
+    async def send(self, value: _T_contra) -> None: ...
 
-class ReceiveChannel(AsyncResource, Generic[T_co]):
+class ReceiveChannel(AsyncResource, Generic[_T_co]):
     @abstractmethod
-    async def receive(self) -> T_co: ...
-    def __aiter__(self) -> AsyncIterator[T_co]: ...
-    async def __anext__(self) -> T_co: ...
+    async def receive(self) -> _T_co: ...
+    def __aiter__(self) -> AsyncIterator[_T_co]: ...
+    async def __anext__(self) -> _T_co: ...
 
-class Channel(SendChannel[T], ReceiveChannel[T], metaclass=ABCMeta):
+class Channel(SendChannel[_T], ReceiveChannel[_T], metaclass=ABCMeta):
     pass

@@ -157,8 +157,25 @@ trio.Path.rmdir
 trio.Path.stat
 trio.Path.unlink
 
-# magic special case function
-trio.run_process
-
 # written as a class so you can say open_memory_channel[int](5)
 trio.open_memory_channel
+
+# Tests do not get stubs
+trio.tests.*
+
+# Ignore internal API
+trio._.*
+
+# Deprecated
+trio.Process.__aenter__
+
+# attrs
+.*_AttrsAttributes__
+.*__attrs_own_setattr__
+.*__attrs_post_init__
+
+# Probably invalid __match_args__
+trio.MemoryReceiveChannel.__match_args__
+trio.MemorySendChannel.__match_args__
+trio.lowlevel.Task.__match_args__
+trio.lowlevel.TrioToken.__match_args__
