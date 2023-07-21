@@ -7,6 +7,7 @@ from typing import (
     ContextManager,
     Coroutine,
     Generic,
+    Iterator,
     Mapping,
     NoReturn,
     Optional,
@@ -19,6 +20,7 @@ from typing import (
     final,
     cast,
 )
+from types import FrameType
 from abc import ABCMeta
 from _typeshed import StrOrBytesPath
 from trio_typing import Nursery, takes_callable_and_args
@@ -82,6 +84,7 @@ class Task(metaclass=ABCMeta):
     def eventual_parent_nursery(self) -> Optional[Nursery]: ...
     @property
     def child_nurseries(self) -> Sequence[Nursery]: ...
+    def iter_await_frames(self) -> Iterator[Tuple[FrameType, int]]: ...
 
 async def checkpoint() -> None: ...
 async def checkpoint_if_cancelled() -> None: ...
@@ -185,7 +188,9 @@ class RunVar(Generic[_T], metaclass=ABCMeta):
 
 # _core._thread_cache
 def start_thread_soon(
-    fn: Callable[[], _T], deliver: Callable[[outcome.Outcome[_T]], None]
+    fn: Callable[[], _T],
+    deliver: Callable[[outcome.Outcome[_T]], None],
+    name: Optional[str] = ...,
 ) -> None: ...
 
 # _subprocess
