@@ -23,10 +23,12 @@ setup(
         "trio >= 0.16.0",
         "typing_extensions >= 3.7.4",
         "mypy_extensions >= 0.4.2",
+        "packaging",
+        "importlib-metadata",
     ],
     extras_require={
         "mypy": [  # can't be installed on PyPy due to its dependency on typed-ast
-            "mypy >= 1.4",
+            "mypy >= 0.920",
         ],
     },
     keywords=["async", "trio", "mypy"],

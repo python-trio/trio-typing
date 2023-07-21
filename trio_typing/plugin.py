@@ -1,4 +1,5 @@
 import sys
+from functools import partial
 from typing import Callable, List, Optional, Sequence, Tuple, cast
 from typing_extensions import Literal
 from typing import Type as typing_Type
@@ -31,6 +32,7 @@ from mypy.types import (
 )
 from mypy.typeops import make_simplified_union
 from mypy.checker import TypeChecker
+from packaging.version import parse as parse_version
 
 
 class TrioPlugin(Plugin):
@@ -51,6 +53,16 @@ class TrioPlugin(Plugin):
         if fullname == "async_generator.yield_from_":
             return yield_from_callback
         return None
+
+
+class TrioPlugin13(TrioPlugin):
+    def get_function_hook(
+        self, fullname: str
+    ) -> Optional[Callable[[FunctionContext], Type]]:
+        if fullname == "trio_typing.takes_callable_and_args":
+            return partial(takes_callable_and_args_callback, has_type_var_default=False)
+
+        return super().get_function_hook(fullname)
 
 
 def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
@@ -321,7 +333,9 @@ def yield_from_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
-def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
+def takes_callable_and_args_callback(
+    ctx: FunctionContext, has_type_var_default: bool = True
+) -> Type:
     """Automate the boilerplate for writing functions that accept
     arbitrary positional arguments of the same type accepted by
     a callable.
@@ -471,18 +485,33 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
                     ),
                 )
             )
-            type_var_types.append(
-                TypeVarType(
-                    "__T{}".format(arg_idx),
-                    "__T{}".format(arg_idx),
-                    -len(fn_type.variables) - arg_idx - 1,
-                    [],
-                    ctx.api.named_generic_type("builtins.object", []),
-                    line=ctx.context.line,
-                    column=ctx.context.column,
-                    default=AnyType(TypeOfAny.from_omitted_generics),
+
+            if has_type_var_default:
+                type_var_types.append(
+                    TypeVarType(
+                        "__T{}".format(arg_idx),
+                        "__T{}".format(arg_idx),
+                        -len(fn_type.variables) - arg_idx - 1,
+                        [],
+                        ctx.api.named_generic_type("builtins.object", []),
+                        line=ctx.context.line,
+                        column=ctx.context.column,
+                        default=AnyType(TypeOfAny.from_omitted_generics),
+                    )
                 )
-            )
+            else:
+                type_var_types.append(
+                    TypeVarType(
+                        "__T{}".format(arg_idx),
+                        "__T{}".format(arg_idx),
+                        -len(fn_type.variables) - arg_idx - 1,
+                        [],
+                        ctx.api.named_generic_type("builtins.object", []),
+                        line=ctx.context.line,
+                        column=ctx.context.column,
+                    )  # type: ignore[call-arg]
+                )
+
         return Overloaded(expanded_fns)
 
     except ValueError as ex:
@@ -493,4 +522,9 @@ def takes_callable_and_args_callback(ctx: FunctionContext) -> Type:
 
 
 def plugin(version: str) -> typing_Type[Plugin]:
-    return TrioPlugin
+    mypy_version = parse_version(version)
+
+    if mypy_version < parse_version("1.4"):
+        return TrioPlugin13
+    else:
+        return TrioPlugin
