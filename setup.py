@@ -23,6 +23,7 @@ setup(
         "trio >= 0.16.0",
         "typing_extensions >= 3.7.4",
         "mypy_extensions >= 0.4.2",
+        "async_generator",
         "packaging",
         "importlib-metadata",
     ],
