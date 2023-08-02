@@ -179,9 +179,8 @@ class _RunVarToken:
 @final
 @attr.s(eq=False, hash=False, slots=True)
 class RunVar(Generic[_T], metaclass=ABCMeta):
-    _NO_DEFAULT = object()
     _name: str = attr.ib()
-    _default: _T = attr.ib(default=cast(_T, _NO_DEFAULT))
+    _default: _T = attr.ib(default=cast(_T, object()))
     def get(self, default: _T = ...) -> _T: ...
     def set(self, value: _T) -> _RunVarToken: ...
     def reset(self, token: _RunVarToken) -> None: ...
