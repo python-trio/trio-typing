@@ -24,9 +24,9 @@ async def parent() -> None:
         await nursery.start(child)  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[NamedArg(TaskStatus[<nothing>], 'task_status')], Awaitable[Any]]"
         await nursery.start(child, "hi")  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str, NamedArg(TaskStatus[int], 'task_status')], Awaitable[Any]]"
         result = await nursery.start(child, 10)
-        result2 = await nursery.start(child2, 10)
-        reveal_type(result)  # N: Revealed type is "builtins.int*"
-        reveal_type(result2)  # N: Revealed type is "None"
+        result2 = await nursery.start(child2, 10)  # E: Function does not return a value
+        await nursery.start(child2, 10)
+        reveal_type(result)  # N: Revealed type is "builtins.int"
 
 [case testTaskStatus_NoPlugin]
 import trio
@@ -54,6 +54,6 @@ async def parent() -> None:
         await nursery.start(child)
         await nursery.start(child, "hi")
         result = await nursery.start(child, 10)
-        result2 = await nursery.start(child2, 10)
-        reveal_type(result)  # N: Revealed type is "builtins.int*"
-        reveal_type(result2)  # N: Revealed type is "None"
+        result2 = await nursery.start(child2, 10)  # E: Function does not return a value
+        await nursery.start(child2, 10)
+        reveal_type(result)  # N: Revealed type is "builtins.int"

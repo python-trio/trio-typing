@@ -7,6 +7,7 @@ from typing import (
     ContextManager,
     Coroutine,
     Generic,
+    Iterator,
     Mapping,
     NoReturn,
     Optional,
@@ -16,11 +17,16 @@ from typing import (
     TypeVar,
     Tuple,
     overload,
+    final,
+    cast,
 )
+from types import FrameType
+from abc import ABCMeta
 from _typeshed import StrOrBytesPath
 from trio_typing import Nursery, takes_callable_and_args
 from typing_extensions import Literal, Protocol
 from mypy_extensions import VarArg
+import attr
 import trio
 import outcome
 import contextvars
@@ -28,19 +34,21 @@ import enum
 import select
 import sys
 
-T = TypeVar("T")
-F = TypeVar("F", bound=Callable[..., Any])
+_T = TypeVar("_T")
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 class _Statistics:
     def __getattr__(self, name: str) -> Any: ...
 
 # _core._ki
-def enable_ki_protection(fn: F) -> F: ...
-def disable_ki_protection(fn: F) -> F: ...
+def enable_ki_protection(fn: _F) -> _F: ...
+def disable_ki_protection(fn: _F) -> _F: ...
 def currently_ki_protected() -> bool: ...
 
 # _core._entry_queue
-class TrioToken:
+@final
+@attr.s(eq=False, hash=False, slots=True)
+class TrioToken(metaclass=ABCMeta):
     @takes_callable_and_args
     def run_sync_soon(
         self,
@@ -50,25 +58,33 @@ class TrioToken:
     ) -> None: ...
 
 # _core._unbounded_queue
-class UnboundedQueue(Generic[T]):
+@final
+class UnboundedQueue(Generic[_T], metaclass=ABCMeta):
     def __init__(self) -> None: ...
     def qsize(self) -> int: ...
     def empty(self) -> bool: ...
-    def put_nowait(self, obj: T) -> None: ...
-    def get_batch_nowait(self) -> Sequence[T]: ...
-    async def get_batch(self) -> Sequence[T]: ...
+    def put_nowait(self, obj: _T) -> None: ...
+    def get_batch_nowait(self) -> Sequence[_T]: ...
+    async def get_batch(self) -> Sequence[_T]: ...
     def statistics(self) -> _Statistics: ...
-    def __aiter__(self) -> AsyncIterator[Sequence[T]]: ...
+    def __aiter__(self) -> AsyncIterator[Sequence[_T]]: ...
+    async def __anext__(self) -> Sequence[_T]: ...
 
 # _core._run
-class Task:
+@final
+@attr.s(eq=False, hash=False, repr=False, slots=True)
+class Task(metaclass=ABCMeta):
     coro: Coroutine[Any, outcome.Outcome[object], Any]
     name: str
     context: contextvars.Context
     custom_sleep_data: Any
-    parent_nursery: Optional[Nursery]
-    eventual_parent_nursery: Optional[Nursery]
-    child_nurseries: Sequence[Nursery]
+    @property
+    def parent_nursery(self) -> Optional[Nursery]: ...
+    @property
+    def eventual_parent_nursery(self) -> Optional[Nursery]: ...
+    @property
+    def child_nurseries(self) -> Sequence[Nursery]: ...
+    def iter_await_frames(self) -> Iterator[Tuple[FrameType, int]]: ...
 
 async def checkpoint() -> None: ...
 async def checkpoint_if_cancelled() -> None: ...
@@ -93,10 +109,10 @@ async def wait_writable(fd: int) -> None: ...
 def notify_closing(fd: int) -> None: ...
 @takes_callable_and_args
 def start_guest_run(
-    afn: Union[Callable[..., Awaitable[T]], Callable[[VarArg()], Awaitable[T]]],
+    afn: Union[Callable[..., Awaitable[_T]], Callable[[VarArg()], Awaitable[_T]]],
     *args: Any,
     run_sync_soon_threadsafe: Callable[[Callable[[], None]], None],
-    done_callback: Callable[[outcome.Outcome[T]], None],
+    done_callback: Callable[[outcome.Outcome[_T]], None],
     run_sync_soon_not_threadsafe: Callable[[Callable[[], None]], None] = ...,
     host_uses_signal_set_wakeup_fd: bool = ...,
     clock: Optional[trio.abc.Clock] = ...,
@@ -123,9 +139,9 @@ if sys.platform == "win32":
     def current_iocp() -> int: ...
     def register_with_iocp(handle: int) -> None: ...
     async def wait_overlapped(handle: int, lpOverlapped: int) -> None: ...
-    def monitor_completion_key() -> ContextManager[
-        Tuple[int, UnboundedQueue[_CompletionKeyEventInfo]]
-    ]: ...
+    def monitor_completion_key() -> (
+        ContextManager[Tuple[int, UnboundedQueue[_CompletionKeyEventInfo]]]
+    ): ...
 
 # _core._traps
 class Abort(enum.Enum):
@@ -145,7 +161,9 @@ async def temporarily_detach_coroutine_object(
 async def reattach_detached_coroutine_object(task: Task, yield_value: Any) -> None: ...
 
 # _core._parking_lot
-class ParkingLot:
+@final
+@attr.s(eq=False, hash=False, slots=True)
+class ParkingLot(metaclass=ABCMeta):
     def __len__(self) -> int: ...
     def __bool__(self) -> bool: ...
     async def park(self) -> None: ...
@@ -159,15 +177,20 @@ class ParkingLot:
 class _RunVarToken:
     pass
 
-class RunVar(Generic[T]):
-    def __init__(self, name: str, default: T = ...) -> None: ...
-    def get(self, default: T = ...) -> T: ...
-    def set(self, value: T) -> _RunVarToken: ...
+@final
+@attr.s(eq=False, hash=False, slots=True)
+class RunVar(Generic[_T], metaclass=ABCMeta):
+    _name: str = attr.ib()
+    _default: _T = attr.ib(default=cast(_T, object()))
+    def get(self, default: _T = ...) -> _T: ...
+    def set(self, value: _T) -> _RunVarToken: ...
     def reset(self, token: _RunVarToken) -> None: ...
 
 # _core._thread_cache
 def start_thread_soon(
-    fn: Callable[[], T], deliver: Callable[[outcome.Outcome[T]], None]
+    fn: Callable[[], _T],
+    deliver: Callable[[outcome.Outcome[_T]], None],
+    name: Optional[str] = ...,
 ) -> None: ...
 
 # _subprocess
@@ -238,6 +261,7 @@ else:
     ) -> trio.Process: ...
 
 # _unix_pipes
+@final
 class FdStream(trio.abc.Stream):
     def __init__(self, fd: int): ...
     async def send_all(self, data: Union[bytes, memoryview]) -> None: ...

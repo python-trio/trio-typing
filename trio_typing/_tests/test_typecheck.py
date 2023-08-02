@@ -1,5 +1,8 @@
 import os
 import sys
+from packaging.version import parse as parse_version
+from importlib_metadata import version
+
 
 if "trio_typing._tests.datadriven" not in sys.modules:
 
@@ -31,6 +34,11 @@ else:
             options = Options()
             options.show_traceback = True
             options.python_version = sys.version_info[:2]
+            options.hide_error_codes = True
+            if parse_version(version("mypy")) >= parse_version("1.4"):
+                options.force_union_syntax = True
+                options.force_uppercase_builtins = True
+
             if testcase.name.endswith("_36"):
                 options.python_version = (3, 6)
             else:
