@@ -37,9 +37,6 @@ import sys
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
 
-class _Statistics:
-    def __getattr__(self, name: str) -> Any: ...
-
 # _core._ki
 def enable_ki_protection(fn: _F) -> _F: ...
 def disable_ki_protection(fn: _F) -> _F: ...
@@ -58,6 +55,11 @@ class TrioToken(metaclass=ABCMeta):
     ) -> None: ...
 
 # _core._unbounded_queue
+@attr.s(slots=True, frozen=True)
+class UnboundedQueueStatistics:
+    qsize: int = attr.ib()
+    tasks_waiting: int = attr.ib()
+
 @final
 class UnboundedQueue(Generic[_T], metaclass=ABCMeta):
     def __init__(self) -> None: ...
@@ -66,11 +68,42 @@ class UnboundedQueue(Generic[_T], metaclass=ABCMeta):
     def put_nowait(self, obj: _T) -> None: ...
     def get_batch_nowait(self) -> Sequence[_T]: ...
     async def get_batch(self) -> Sequence[_T]: ...
-    def statistics(self) -> _Statistics: ...
+    def statistics(self) -> UnboundedQueueStatistics: ...
     def __aiter__(self) -> AsyncIterator[Sequence[_T]]: ...
     async def __anext__(self) -> Sequence[_T]: ...
 
 # _core._run
+if sys.platform == "win32":
+    @attr.frozen
+    class IOStatistics:
+        tasks_waiting_read: int = attr.ib()
+        tasks_waiting_write: int = attr.ib()
+        tasks_waiting_overlapped: int = attr.ib()
+        completion_key_monitors: int = attr.ib()
+        backend: Literal["windows"] = attr.ib(init=False, default="windows")
+
+elif sys.platform == "linux":
+    @attr.frozen
+    class IOStatistics:
+        tasks_waiting_read: int = attr.ib()
+        tasks_waiting_write: int = attr.ib()
+        backend: Literal["epoll"] = attr.ib(init=False, default="epoll")
+
+else:  # kqueue
+    @attr.frozen
+    class IOStatistics:
+        tasks_waiting: int = attr.ib()
+        monitors: int = attr.ib()
+        backend: Literal["kqueue"] = attr.ib(init=False, default="kqueue")
+
+@attr.frozen
+class RunStatistics:
+    tasks_living: int
+    tasks_runnable: int
+    seconds_to_next_deadline: float
+    io_statistics: IOStatistics
+    run_sync_soon_queue_size: int
+
 @final
 @attr.s(eq=False, hash=False, repr=False, slots=True)
 class Task(metaclass=ABCMeta):
@@ -90,7 +123,7 @@ async def checkpoint() -> None: ...
 async def checkpoint_if_cancelled() -> None: ...
 def current_task() -> Task: ...
 def current_root_task() -> Task: ...
-def current_statistics() -> _Statistics: ...
+def current_statistics() -> RunStatistics: ...
 def current_clock() -> trio.abc.Clock: ...
 def current_trio_token() -> TrioToken: ...
 def reschedule(task: Task, next_send: outcome.Outcome[Any] = ...) -> None: ...
@@ -161,6 +194,10 @@ async def temporarily_detach_coroutine_object(
 async def reattach_detached_coroutine_object(task: Task, yield_value: Any) -> None: ...
 
 # _core._parking_lot
+@attr.s(frozen=True, slots=True)
+class ParkingLotStatistics:
+    tasks_waiting: int = attr.ib()
+
 @final
 @attr.s(eq=False, hash=False, slots=True)
 class ParkingLot(metaclass=ABCMeta):
@@ -171,11 +208,14 @@ class ParkingLot(metaclass=ABCMeta):
     def unpark_all(self) -> Sequence[Task]: ...
     def repark(self, new_lot: ParkingLot, *, count: int = 1) -> None: ...
     def repark_all(self, new_lot: ParkingLot) -> None: ...
-    def statistics(self) -> _Statistics: ...
+    def statistics(self) -> ParkingLotStatistics: ...
 
 # _core._local
-class _RunVarToken:
-    pass
+class _NoValue: ...
+
+class RunVarToken(Generic[_T]):
+    previous_value: T | type[_NoValue]
+    redeemed: bool
 
 @final
 @attr.s(eq=False, hash=False, slots=True)
@@ -183,8 +223,8 @@ class RunVar(Generic[_T], metaclass=ABCMeta):
     _name: str = attr.ib()
     _default: _T = attr.ib(default=cast(_T, object()))
     def get(self, default: _T = ...) -> _T: ...
-    def set(self, value: _T) -> _RunVarToken: ...
-    def reset(self, token: _RunVarToken) -> None: ...
+    def set(self, value: _T) -> RunVarToken[_T]: ...
+    def reset(self, token: RunVarToken[_T]) -> None: ...
 
 # _core._thread_cache
 def start_thread_soon(

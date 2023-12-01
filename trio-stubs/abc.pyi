@@ -43,9 +43,9 @@ class SocketFactory(metaclass=ABCMeta):
     @abstractmethod
     def socket(
         self,
-        family: Optional[int] = None,
-        type: Optional[int] = None,
-        proto: Optional[int] = None,
+        family: socket.AddressFamily | int = ...,
+        type: socket.SocketKind | int = ...,
+        proto: int = ...,
     ) -> trio.socket.SocketType: ...
 
 class AsyncResource(metaclass=ABCMeta):
