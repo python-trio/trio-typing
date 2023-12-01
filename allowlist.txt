@@ -173,6 +173,8 @@ trio.Process.__aenter__
 .*_AttrsAttributes__
 .*__attrs_own_setattr__
 .*__attrs_post_init__
+.*_AT
+.*__slots__
 
 # Probably invalid __match_args__
 trio.MemoryReceiveChannel.__match_args__

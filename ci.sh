@@ -3,7 +3,7 @@
 set -ex -o pipefail
 
 BLACK_VERSION=22.3
-MYPY_VERSION=1.4
+MYPY_VERSION=1.7
 
 pip install -U pip setuptools wheel
 

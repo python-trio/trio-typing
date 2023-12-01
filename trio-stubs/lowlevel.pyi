@@ -75,7 +75,7 @@ class UnboundedQueue(Generic[_T], metaclass=ABCMeta):
 # _core._run
 if sys.platform == "win32":
     @attr.frozen
-    class IOStatistics:
+    class _IOStatistics:
         tasks_waiting_read: int = attr.ib()
         tasks_waiting_write: int = attr.ib()
         tasks_waiting_overlapped: int = attr.ib()
@@ -84,14 +84,14 @@ if sys.platform == "win32":
 
 elif sys.platform == "linux":
     @attr.frozen
-    class IOStatistics:
+    class _IOStatistics:
         tasks_waiting_read: int = attr.ib()
         tasks_waiting_write: int = attr.ib()
         backend: Literal["epoll"] = attr.ib(init=False, default="epoll")
 
 else:  # kqueue
     @attr.frozen
-    class IOStatistics:
+    class _IOStatistics:
         tasks_waiting: int = attr.ib()
         monitors: int = attr.ib()
         backend: Literal["kqueue"] = attr.ib(init=False, default="kqueue")
@@ -101,7 +101,7 @@ class RunStatistics:
     tasks_living: int
     tasks_runnable: int
     seconds_to_next_deadline: float
-    io_statistics: IOStatistics
+    io_statistics: _IOStatistics
     run_sync_soon_queue_size: int
 
 @final
@@ -213,9 +213,12 @@ class ParkingLot(metaclass=ABCMeta):
 # _core._local
 class _NoValue: ...
 
-class RunVarToken(Generic[_T]):
-    previous_value: T | type[_NoValue]
-    redeemed: bool
+@final
+@attr.s(eq=False, hash=False, slots=True)
+class RunVarToken(Generic[_T], metaclass=ABCMeta):
+    _var: RunVar[_T] = attr.ib()
+    previous_value: _T | type[_NoValue] = attr.ib(default=_NoValue)
+    redeemed: bool = attr.ib(init=False)
 
 @final
 @attr.s(eq=False, hash=False, slots=True)

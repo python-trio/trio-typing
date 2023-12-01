@@ -70,7 +70,7 @@ Install trio-typing with mypy extras::
 
     pip install trio-typing[mypy]
 
-Note that due to recent plugin API changes, trio-typing 0.7.0+ requires mypy 0.920+.
+Note that due to recent plugin API changes, trio-typing 0.10.0+ requires mypy 1.0+.
 
 Enable the plugin in your ``mypy.ini``::
 

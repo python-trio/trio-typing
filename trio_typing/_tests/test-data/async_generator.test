@@ -61,7 +61,7 @@ async def dummy():
 
 firstiter = agen.get_asyncgen_hooks().firstiter
 if firstiter is not None:
-    firstiter(iter([]))  # E: Argument 1 has incompatible type "Iterator[<nothing>]"; expected "AsyncGenerator[Any, Any]"
+    firstiter(iter([]))  # E: Argument 1 has incompatible type "Iterator[Never]"; expected "AsyncGenerator[Any, Any]"
     reveal_type(firstiter(dummy()))  # N: Revealed type is "Any"
     agen.set_asyncgen_hooks(firstiter)
     agen.set_asyncgen_hooks(firstiter, finalizer=firstiter)

@@ -221,7 +221,7 @@ class Event(metaclass=ABCMeta):
 class CapacityLimiterStatistics:
     borrowed_tokens: int = attr.ib()
     total_tokens: int | float = attr.ib()
-    borrowers: list[Task | object] = attr.ib()
+    borrowers: list[trio.lowlevel.Task | object] = attr.ib()
     tasks_waiting: int = attr.ib()
 
 @final
@@ -271,7 +271,7 @@ class Semaphore(metaclass=ABCMeta):
 @attr.s(frozen=True, slots=True)
 class LockStatistics:
     locked: bool = attr.ib()
-    owner: Task | None = attr.ib()
+    owner: trio.lowlevel.Task | None = attr.ib()
     tasks_waiting: int = attr.ib()
 
 @final
@@ -375,7 +375,7 @@ class MemoryReceiveChannel(trio.abc.ReceiveChannel[_T_co]):
     async def receive(self) -> _T_co: ...
     def clone(self: _T) -> _T: ...
     async def aclose(self) -> None: ...
-    def statistics(self) -> _Statistics: ...
+    def statistics(self) -> _MemoryChannelStats: ...
     def close(self) -> None: ...
     def __enter__(self) -> MemoryReceiveChannel[_T_co]: ...
     def __exit__(
@@ -403,7 +403,9 @@ class SocketStream(trio.abc.HalfCloseableStream):
     socket: trio.socket.SocketType
     def __init__(self, socket: trio.socket.SocketType) -> None: ...
     @overload
-    def setsockopt(self, level: int, option: int, value: int | Buffer) -> None: ...
+    def setsockopt(
+        self, level: int, option: int, value: int | Buffer, length: None = None
+    ) -> None: ...
     @overload
     def setsockopt(self, level: int, option: int, value: None, length: int) -> None: ...
     @overload
