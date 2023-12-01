@@ -39,11 +39,6 @@ class TrioPlugin(Plugin):
     def get_function_hook(
         self, fullname: str
     ) -> Optional[Callable[[FunctionContext], Type]]:
-        if fullname in (
-            "contextlib.asynccontextmanager",
-            "async_generator.asynccontextmanager",
-        ):
-            return args_invariant_decorator_callback
         if fullname == "trio_typing.takes_callable_and_args":
             return takes_callable_and_args_callback
         if fullname == "async_generator.async_generator":
@@ -63,26 +58,6 @@ class TrioPlugin13(TrioPlugin):
             return partial(takes_callable_and_args_callback, has_type_var_default=False)
 
         return super().get_function_hook(fullname)
-
-
-def args_invariant_decorator_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for @asynccontextmanager,
-    @async_generator, and other decorators that affect the return
-    type but not the argument types of the function they decorate.
-    """
-    # (adapted from the @contextmanager support in mypy's builtin plugin)
-    if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = get_proper_type(ctx.arg_types[0][0])
-        ret_type = get_proper_type(ctx.default_return_type)
-        if isinstance(arg_type, CallableType) and isinstance(ret_type, CallableType):
-            return ret_type.copy_modified(
-                arg_types=arg_type.arg_types,
-                arg_kinds=arg_type.arg_kinds,
-                arg_names=arg_type.arg_names,
-                variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args,
-            )
-    return ctx.default_return_type
 
 
 def decode_agen_types_from_return_type(
@@ -189,25 +164,23 @@ def async_generator_callback(ctx: FunctionContext) -> Type:
     YieldType[bool], SendType[int]]`` without the plugin.
     """
 
-    # Apply the common logic to not change the arguments of the
-    # decorated function
-    new_return_type = args_invariant_decorator_callback(ctx)
-    if not isinstance(new_return_type, CallableType):
-        return new_return_type
-    agen_return_type = get_proper_type(new_return_type.ret_type)
+    decorator_return_type = ctx.default_return_type
+    if not isinstance(decorator_return_type, CallableType):
+        return decorator_return_type
+    agen_return_type = get_proper_type(decorator_return_type.ret_type)
     if (
         isinstance(agen_return_type, Instance)
         and agen_return_type.type.fullname == "trio_typing.CompatAsyncGenerator"
         and len(agen_return_type.args) == 3
     ):
-        return new_return_type.copy_modified(
+        return decorator_return_type.copy_modified(
             ret_type=agen_return_type.copy_modified(
                 args=list(
                     decode_agen_types_from_return_type(ctx, agen_return_type.args[2])
                 )
             )
         )
-    return new_return_type
+    return decorator_return_type
 
 
 def decode_enclosing_agen_types(ctx: FunctionContext) -> Tuple[Type, Type]:
@@ -524,7 +497,9 @@ def takes_callable_and_args_callback(
 def plugin(version: str) -> typing_Type[Plugin]:
     mypy_version = parse_version(version)
 
-    if mypy_version < parse_version("1.4"):
+    if mypy_version < parse_version("1.0"):
+        raise RuntimeError("This version of trio-typing requires at least mypy 1.0.")
+    elif mypy_version < parse_version("1.4"):
         return TrioPlugin13
     else:
         return TrioPlugin

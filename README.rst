@@ -70,7 +70,7 @@ Install trio-typing with mypy extras::
 
     pip install trio-typing[mypy]
 
-Note that due to recent plugin API changes, trio-typing 0.7.0+ requires mypy 0.920+.
+Note that due to recent plugin API changes, trio-typing 0.10.0+ requires mypy 1.0+.
 
 Enable the plugin in your ``mypy.ini``::
 
@@ -128,10 +128,6 @@ The ``trio_typing`` package provides:
   ``SendType[T]``, and the decorator ``@takes_callable_and_args``.
 
 The ``trio_typing.plugin`` mypy plugin provides:
-
-* Argument type checking for functions decorated with
-  ``@asynccontextmanager`` (either the one in ``async_generator`` or the
-  one in 3.7+ ``contextlib``) and ``@async_generator``
 
 * Inference of more specific ``trio.open_file()`` and ``trio.Path.open()``
   return types based on constant ``mode`` and ``buffering`` arguments, so

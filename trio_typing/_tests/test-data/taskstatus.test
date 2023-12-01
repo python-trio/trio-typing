@@ -21,10 +21,10 @@ async def parent() -> None:
         nursery.start_soon(child2)  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[], Awaitable[Any]]"
         nursery.start_soon(child2, "hi")  # E: Argument 1 to "start_soon" of "Nursery" has incompatible type "Callable[[int, DefaultNamedArg(TaskStatus[None], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str], Awaitable[Any]]"
         nursery.start_soon(child2, 50)
-        await nursery.start(child)  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[NamedArg(TaskStatus[<nothing>], 'task_status')], Awaitable[Any]]"
+        await nursery.start(child)  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[NamedArg(TaskStatus[int], 'task_status')], Awaitable[Any]]"
         await nursery.start(child, "hi")  # E: Argument 1 to "start" of "Nursery" has incompatible type "Callable[[int, NamedArg(TaskStatus[int], 'task_status')], Coroutine[Any, Any, None]]"; expected "Callable[[str, NamedArg(TaskStatus[int], 'task_status')], Awaitable[Any]]"
         result = await nursery.start(child, 10)
-        result2 = await nursery.start(child2, 10)  # E: Function does not return a value
+        result2 = await nursery.start(child2, 10)  # E: Function does not return a value (it only ever returns None)
         await nursery.start(child2, 10)
         reveal_type(result)  # N: Revealed type is "builtins.int"
 
@@ -54,6 +54,6 @@ async def parent() -> None:
         await nursery.start(child)
         await nursery.start(child, "hi")
         result = await nursery.start(child, 10)
-        result2 = await nursery.start(child2, 10)  # E: Function does not return a value
+        result2 = await nursery.start(child2, 10)  # E: Function does not return a value (it only ever returns None)
         await nursery.start(child2, 10)
         reveal_type(result)  # N: Revealed type is "builtins.int"

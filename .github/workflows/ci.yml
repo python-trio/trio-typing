@@ -15,10 +15,11 @@ jobs:
       fail-fast: false
       matrix:
         python:
-          - '3.7'
           - '3.8'
           - '3.9'
           - '3.10'
+          - '3.11'
+          - '3.12'
         check_formatting: ['0']
         check_typing: ['0']
         runtime_only: ['0']

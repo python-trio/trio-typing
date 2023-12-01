@@ -1,6 +1,8 @@
+import socket
 import trio
 from abc import ABCMeta, abstractmethod
 from typing import List, Tuple, Union, Any, Optional, Generic, TypeVar, AsyncIterator
+from types import TracebackType
 
 _T = TypeVar("_T")
 
@@ -43,16 +45,21 @@ class SocketFactory(metaclass=ABCMeta):
     @abstractmethod
     def socket(
         self,
-        family: Optional[int] = None,
-        type: Optional[int] = None,
-        proto: Optional[int] = None,
+        family: socket.AddressFamily | int = ...,
+        type: socket.SocketKind | int = ...,
+        proto: int = ...,
     ) -> trio.socket.SocketType: ...
 
 class AsyncResource(metaclass=ABCMeta):
     @abstractmethod
     async def aclose(self) -> None: ...
     async def __aenter__(self: _T) -> _T: ...
-    async def __aexit__(self, *exc: object) -> None: ...
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
 
 class SendStream(AsyncResource):
     @abstractmethod

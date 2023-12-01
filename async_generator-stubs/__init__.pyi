@@ -14,16 +14,16 @@ from typing import (
     overload,
 )
 from trio_typing import AsyncGenerator, CompatAsyncGenerator, YieldType, SendType
-from typing_extensions import Protocol
+from typing_extensions import Protocol, ParamSpec
 
 _T = TypeVar("_T")
+_P = ParamSpec("_P")
 
-# The returned async generator's YieldType and SendType and the
-# argument types of the decorated function get inferred by
+# The returned async generator's YieldType and SendType get inferred by
 # trio_typing.plugin
 def async_generator(
-    __fn: Callable[..., Awaitable[_T]]
-) -> Callable[..., CompatAsyncGenerator[Any, Any, _T]]: ...
+    __fn: Callable[_P, Awaitable[_T]]
+) -> Callable[_P, CompatAsyncGenerator[Any, Any, _T]]: ...
 
 # The return type and a more specific argument type can be
 # inferred by trio_typing.plugin, based on the enclosing
@@ -40,12 +40,9 @@ async def yield_from_(agen: AsyncGenerator[Any, Any]) -> None: ...
 async def yield_from_(agen: AsyncIterable[Any]) -> None: ...
 def isasyncgen(obj: object) -> bool: ...
 def isasyncgenfunction(obj: object) -> bool: ...
-
-# Argument types of the decorated function get inferred by
-# trio_typing.plugin
 def asynccontextmanager(
-    fn: Callable[..., AsyncIterator[_T]]
-) -> Callable[..., AsyncContextManager[_T]]: ...
+    fn: Callable[_P, AsyncIterator[_T]]
+) -> Callable[_P, AsyncContextManager[_T]]: ...
 
 class _AsyncCloseable(Protocol):
     def aclose(self) -> Awaitable[None]: ...
