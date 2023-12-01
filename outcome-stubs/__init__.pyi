@@ -11,12 +11,13 @@ from typing import (
     Union,
 )
 from types import TracebackType
-from typing_extensions import Protocol
+from typing_extensions import Protocol, ParamSpec
 
 T = TypeVar("T")
 U = TypeVar("U")
 T_co = TypeVar("T_co", covariant=True)
 T_contra = TypeVar("T_contra", contravariant=True)
+P = ParamSpec("P")
 
 # Can't use AsyncGenerator as it creates a dependency cycle
 # (outcome stubs -> trio_typing stubs -> trio.hazmat stubs -> outcome)
@@ -47,9 +48,9 @@ class Error:
 
 Outcome = Union[Value[T], Error]
 
-# TODO: narrower typing for these (the args and kwargs should
-# be acceptable to the callable)
-def capture(sync_fn: Callable[..., T], *args: Any, **kwargs: Any) -> Outcome[T]: ...
+def capture(
+    sync_fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> Outcome[T]: ...
 async def acapture(
-    async_fn: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any
+    async_fn: Callable[P, Awaitable[T]], *args: P.args, **kwargs: P.kwargs
 ) -> Outcome[T]: ...

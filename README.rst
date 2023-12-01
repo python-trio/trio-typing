@@ -129,10 +129,6 @@ The ``trio_typing`` package provides:
 
 The ``trio_typing.plugin`` mypy plugin provides:
 
-* Argument type checking for functions decorated with
-  ``@asynccontextmanager`` (either the one in ``async_generator`` or the
-  one in 3.7+ ``contextlib``) and ``@async_generator``
-
 * Inference of more specific ``trio.open_file()`` and ``trio.Path.open()``
   return types based on constant ``mode`` and ``buffering`` arguments, so
   ``await trio.open_file("foo", "rb", 0)`` returns an unbuffered async
