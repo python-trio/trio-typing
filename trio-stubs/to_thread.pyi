@@ -10,6 +10,6 @@ def current_default_thread_limiter() -> trio.CapacityLimiter: ...
 async def run_sync(
     sync_fn: Union[Callable[..., _T], Callable[[VarArg()], _T]],
     *args: Any,
-    cancellable: bool = False,
+    abandon_on_cancel: bool = False,
     limiter: Optional[trio.CapacityLimiter] = None,
 ) -> _T: ...
