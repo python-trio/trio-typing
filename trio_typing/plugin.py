@@ -22,6 +22,7 @@ from mypy.types import (
     Overloaded,
     TypeVarLikeType,
     TypeVarType,
+    TypeVarId,
     Instance,
     UnionType,
     UninhabitedType,
@@ -134,9 +135,7 @@ def decode_agen_types_from_return_type(
         return (
             yield_type,
             send_type,
-            UninhabitedType(
-                is_noreturn=True, line=ctx.context.line, column=ctx.context.column
-            ),
+            UninhabitedType(line=ctx.context.line, column=ctx.context.column),
         )
     else:
         return (
@@ -464,7 +463,7 @@ def takes_callable_and_args_callback(
                     TypeVarType(
                         "__T{}".format(arg_idx),
                         "__T{}".format(arg_idx),
-                        -len(fn_type.variables) - arg_idx - 1,
+                        TypeVarId(-len(fn_type.variables) - arg_idx - 1),
                         [],
                         ctx.api.named_generic_type("builtins.object", []),
                         line=ctx.context.line,
@@ -477,7 +476,7 @@ def takes_callable_and_args_callback(
                     TypeVarType(
                         "__T{}".format(arg_idx),
                         "__T{}".format(arg_idx),
-                        -len(fn_type.variables) - arg_idx - 1,
+                        TypeVarId(-len(fn_type.variables) - arg_idx - 1),
                         [],
                         ctx.api.named_generic_type("builtins.object", []),
                         line=ctx.context.line,
