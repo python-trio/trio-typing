@@ -441,7 +441,7 @@ class SocketType:
     async def sendmsg(
         self,
         buffers: Iterable[ReadableBuffer],
-        ancdata: Iterable[Tuple[int, int, Union[bytes, memoryview]]] = ...,
+        ancdata: Iterable[Tuple[int, int, Union[bytes, bytearray, memoryview]]] = ...,
         flags: int = ...,
         address: Union[Tuple[Any, ...], str] = ...,
     ) -> int: ...
